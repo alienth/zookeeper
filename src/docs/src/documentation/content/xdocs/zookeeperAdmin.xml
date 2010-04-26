@@ -162,7 +162,7 @@
           <para>Create a configuration file. This file can be called anything.
           Use the following settings as a starting point:</para>
 
-          <para><computeroutput>
+          <programlisting>
 tickTime=2000
 dataDir=/var/zookeeper/
 clientPort=2181
@@ -170,7 +170,7 @@ initLimit=5
 syncLimit=2
 server.1=zoo1:2888:3888
 server.2=zoo2:2888:3888
-server.3=zoo3:2888:3888</computeroutput></para>
+server.3=zoo3:2888:3888</programlisting>
 
           <para>You can find the meanings of these and other configuration
           settings in the section <xref linkend="sc_configuration" />. A word
@@ -185,7 +185,9 @@ server.3=zoo3:2888:3888</computeroutput></para>
           server id to each machine by creating a file named
           <filename>myid</filename>, one for each server, which resides in
           that server's data directory, as specified by the configuration file
-          parameter <emphasis role="bold">dataDir</emphasis>. The myid file
+          parameter <emphasis role="bold">dataDir</emphasis>.</para></listitem>
+
+          <listitem><para>The myid file
           consists of a single line containing only the text of that machine's
           id. So <filename>myid</filename> of server 1 would contain the text
           "1" and nothing else. The id must be unique within the
@@ -296,6 +298,10 @@ server.3=zoo3:2888:3888</computeroutput></para>
 
         <listitem>
           <para><xref linkend="sc_maintenance" /></para>
+        </listitem>
+
+        <listitem>
+          <para><xref linkend="sc_supervision" /></para>
         </listitem>
 
         <listitem>
@@ -492,10 +498,39 @@ server.3=zoo3:2888:3888</computeroutput></para>
 
     </section>
 
+    <section id="sc_supervision">
+      <title>Supervision</title>
+
+      <para>You will want to have a supervisory process that manages
+      each of your ZooKeeper server processes (JVM). The ZK server is
+      designed to be "fail fast" meaning that it will shutdown
+      (process exit) if an error occurs that it cannot recover
+      from. As a ZooKeeper serving cluster is highly reliable, this
+      means that while the server may go down the cluster as a whole
+      is still active and serving requests. Additionally, as the
+      cluster is "self healing" the failed server once restarted will
+      automatically rejoin the ensemble w/o any manual
+      interaction.</para>
+
+      <para>Having a supervisory process such as <ulink
+      url="http://cr.yp.to/daemontools.html">daemontools</ulink> or
+      <ulink
+      url="http://en.wikipedia.org/wiki/Service_Management_Facility">SMF</ulink>
+      (other options for supervisory process are also available, it's
+      up to you which one you would like to use, these are just two
+      examples) managing your ZooKeeper server ensures that if the
+      process does exit abnormally it will automatically be restarted
+      and will quickly rejoin the cluster.</para>
+    </section>
+
     <section id="sc_monitoring">
       <title>Monitoring</title>
 
-      <para></para>
+      <para>The ZooKeeper service can be monitored in one of two
+      primary ways; 1) the command port through the use of <ulink
+      url="#sc_zkCommands">4 letter words</ulink> and 2) <ulink
+      url="zookeeperJMX.html">JMX</ulink>. See the appropriate section for
+      your environment/requirements.</para>
     </section>
 
     <section id="sc_logging">
@@ -515,8 +550,22 @@ server.3=zoo3:2888:3888</computeroutput></para>
 
     <section id="sc_troubleshooting">
       <title>Troubleshooting</title>
-
-      <para></para>
+	<variablelist>
+		<varlistentry>
+		<term> Server not coming up because of file corruption</term>
+		<listitem>
+		<para>A server might not be able to read its database and fail to come up because of 
+		some file corruption in the transaction logs of the ZooKeeper server. You will
+		see some IOException on loading ZooKeeper database. In such a case,
+		make sure all the other servers in your ensemble are up and  working. Use "stat" 
+		command on the command port to see if they are in good health. After you have verified that
+		all the other servers of the ensemble are up, you can go ahead and clean the database
+		of the corrupt server. Delete all the files in datadir/version-2 and datalogdir/version-2/.
+		Restart the server.
+		</para>
+		</listitem>
+		</varlistentry>
+		</variablelist>
     </section>
 
     <section id="sc_configuration">
@@ -649,15 +698,11 @@ server.3=zoo3:2888:3888</computeroutput></para>
               <para>(Java system property: <emphasis
               role="bold">zookeeper.snapCount</emphasis>)</para>
 
-              <para>Clients can submit requests faster than ZooKeeper can
-              process them, especially if there are a lot of clients. To
-              prevent ZooKeeper from running out of memory due to queued
-              requests, ZooKeeper will throttle clients so that there is no
-              more than globalOutstandingLimit outstanding requests in the
-              system. The default limit is 1,000.ZooKeeper logs transactions
-              to a transaction log. After snapCount transactions are written
-              to a log file a snapshot is started and a new transaction log
-              file is started. The default snapCount is 10,000.</para>
+              <para>ZooKeeper logs transactions to a transaction
+              log. After snapCount transactions are written to a log
+              file a snapshot is started and a new transaction log
+              file is created. The default snapCount is
+              100,000.</para>
             </listitem>
           </varlistentry>
 
@@ -676,6 +721,7 @@ server.3=zoo3:2888:3888</computeroutput></para>
               property. Yes - it's not consistent, and it's annoying.)</para>
             </listitem>
           </varlistentry>
+
           <varlistentry>
             <term>maxClientCnxns</term>
             <listitem>
@@ -685,8 +731,47 @@ server.3=zoo3:2888:3888</computeroutput></para>
               level) that a single client, identified by IP address, may make
               to a single member of the ZooKeeper ensemble. This is used to 
               prevent certain classes of DoS attacks, including file 
-              descriptor exhaustion. Setting this to 0 or omitting it entirely 
-              removes the limit on concurrent connections.</para>
+              descriptor exhaustion. The default is 10. Setting this to 0 
+              entirely removes the limit on concurrent connections.</para>
+            </listitem>
+           </varlistentry>
+
+           <varlistentry>
+             <term>clientPortBindAddress</term>
+
+             <listitem>
+               <para><emphasis role="bold">New in 3.3.0:</emphasis> the
+               address (ipv4, ipv6 or hostname) to listen for client
+               connections; that is, the address that clients attempt
+               to connect to. This is optional, by default we bind in
+               such a way that any connection to the <emphasis
+               role="bold">clientPort</emphasis> for any
+               address/interface/nic on the server will be
+               accepted.</para>
+             </listitem>
+           </varlistentry>
+
+          <varlistentry>
+            <term>minSessionTimeout</term>
+            <listitem>
+              <para>(No Java system property)</para>
+
+              <para><emphasis role="bold">New in 3.3.0:</emphasis> the
+              minimum session timeout in milliseconds that the server
+              will allow the client to negotiate. Defaults to 2 times
+              the <emphasis role="bold">tickTime</emphasis>.</para>
+            </listitem>
+           </varlistentry>
+
+          <varlistentry>
+            <term>maxSessionTimeout</term>
+            <listitem>
+              <para>(No Java system property)</para>
+
+              <para><emphasis role="bold">New in 3.3.0:</emphasis> the
+              maximum session timeout in milliseconds that the server
+              will allow the client to negotiate. Defaults to 20 times
+              the <emphasis role="bold">tickTime</emphasis>.</para>
             </listitem>
            </varlistentry>
         </variablelist>
@@ -710,8 +795,18 @@ server.3=zoo3:2888:3888</computeroutput></para>
               non-authenticated UDP-based version of fast leader election, "2"
               corresponds to the authenticated UDP-based version of fast
               leader election, and "3" corresponds to TCP-based version of
-              fast leader election. Currently, only 0 and 3 are supported, 3 
-              being the default</para>
+              fast leader election. Currently, algorithm 3 is the default</para>
+              
+              <note>
+              <para> The implementations of leader election
+              1 and 2 are currently not supported, and we have the intention
+              of deprecating them in the near future. Implementations 0 and 3 are 
+              currently supported, and we plan to keep supporting them in the near future. 
+              To avoid having to support multiple versions of leader election unecessarily, 
+              we may eventually consider deprecating algorithm 0 as well, but we will plan
+              according to the needs of the community. 
+              </para>
+              </note>
             </listitem>
           </varlistentry>
 
@@ -930,7 +1025,44 @@ server.3=zoo3:2888:3888</computeroutput></para>
       composed of four letters. You issue the commands to ZooKeeper via telnet
       or nc, at the client port.</para>
 
+      <para>Three of the more interesting commands: "stat" gives some
+      general information about the server and connected clients,
+      while "srvr" and "cons" give extended details on server and
+      connections respectively.</para>
+
       <variablelist>
+        <varlistentry>
+          <term>conf</term>
+
+          <listitem>
+            <para><emphasis role="bold">New in 3.3.0:</emphasis> Print
+            details about serving configuration.</para>
+          </listitem>
+
+        </varlistentry>
+
+        <varlistentry>
+          <term>cons</term>
+
+          <listitem>
+            <para><emphasis role="bold">New in 3.3.0:</emphasis> List
+            full connection/session details for all clients connected
+            to this server. Includes information on numbers of packets
+            received/sent, session id, operation latencies, last
+            operation performed, etc...</para>
+          </listitem>
+
+        </varlistentry>
+
+        <varlistentry>
+          <term>crst</term>
+
+          <listitem>
+            <para><emphasis role="bold">New in 3.3.0:</emphasis> Reset
+            connection/session statistics for all connections.</para>
+          </listitem>
+        </varlistentry>
+
         <varlistentry>
           <term>dump</term>
 
@@ -949,20 +1081,17 @@ server.3=zoo3:2888:3888</computeroutput></para>
         </varlistentry>
 
         <varlistentry>
-          <term>reqs</term>
-
-          <listitem>
-            <para>List outstanding requests</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
           <term>ruok</term>
 
           <listitem>
             <para>Tests if server is running in a non-error state. The server
             will respond with imok if it is running. Otherwise it will not
             respond at all.</para>
+
+            <para>A response of "imok" does not necessarily indicate that the
+            server has joined the quorum, just that the server process is active
+            and bound to the specified client port. Use "stat" for details on
+            state wrt quorum and client connection information.</para>
           </listitem>
         </varlistentry>
 
@@ -970,7 +1099,16 @@ server.3=zoo3:2888:3888</computeroutput></para>
           <term>srst</term>
 
           <listitem>
-            <para>Reset statistics returned by stat command.</para>
+            <para>Reset server statistics.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>srvr</term>
+
+          <listitem>
+            <para><emphasis role="bold">New in 3.3.0:</emphasis> Lists
+            full details for the server.</para>
           </listitem>
         </varlistentry>
 
@@ -978,8 +1116,43 @@ server.3=zoo3:2888:3888</computeroutput></para>
           <term>stat</term>
 
           <listitem>
-            <para>Lists statistics about performance and connected
+            <para>Lists brief details for the server and connected
             clients.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>wchs</term>
+
+          <listitem>
+            <para><emphasis role="bold">New in 3.3.0:</emphasis> Lists
+            brief information on watches for the server.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>wchc</term>
+
+          <listitem>
+            <para><emphasis role="bold">New in 3.3.0:</emphasis> Lists
+            detailed information on watches for the server, by
+            session.  This outputs a list of sessions(connections)
+            with associated watches (paths). Note, depending on the
+            number of watches this operation may be expensive (ie
+            impact server performance), use it carefully.</para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>wchp</term>
+
+          <listitem>
+            <para><emphasis role="bold">New in 3.3.0:</emphasis> Lists
+            detailed information on watches for the server, by path.
+            This outputs a list of paths (znodes) with associated
+            sessions. Note, depending on the number of watches this
+            operation may be expensive (ie impact server performance),
+            use it carefully.</para>
           </listitem>
         </varlistentry>
       </variablelist>

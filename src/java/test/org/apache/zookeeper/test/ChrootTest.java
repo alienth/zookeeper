@@ -27,16 +27,8 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.ZooDefs.Ids;
-import org.apache.zookeeper.test.AsyncOps.ACLCB;
-import org.apache.zookeeper.test.AsyncOps.ChildrenCB;
-import org.apache.zookeeper.test.AsyncOps.DataCB;
-import org.apache.zookeeper.test.AsyncOps.StatCB;
-import org.apache.zookeeper.test.AsyncOps.StringCB;
-import org.apache.zookeeper.test.AsyncOps.VoidCB;
-import org.junit.Test;
 
 public class ChrootTest extends ClientBase {
     private class MyWatcher implements Watcher {
@@ -92,6 +84,12 @@ public class ChrootTest extends ClientBase {
 
             MyWatcher w3 = new MyWatcher("/ch2");
             assertNotNull(zk2.exists("/ch2", w3));
+            
+            // set watches on child
+            MyWatcher w4 = new MyWatcher("/ch1");
+            zk1.getChildren("/ch1",w4);
+            MyWatcher w5 = new MyWatcher("/");
+            zk2.getChildren("/",w5);
 
             // check set
             zk1.setData("/ch1", "1".getBytes(), -1);
@@ -118,6 +116,9 @@ public class ChrootTest extends ClientBase {
 
             // check delete
             zk2.delete("/ch2", -1);
+            assertTrue(w4.matches());
+            assertTrue(w5.matches());
+            
             zk1.delete("/ch1", -1);
             assertNull(zk1.exists("/ch1", false));
             assertNull(zk1.exists("/ch1/ch2", false));

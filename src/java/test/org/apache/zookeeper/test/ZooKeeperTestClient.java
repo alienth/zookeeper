@@ -23,19 +23,17 @@ import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.KeeperException.Code;
+import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.data.Stat;
-import org.apache.zookeeper.WatchedEvent;
-import org.junit.Test;
 
 public class ZooKeeperTestClient extends TestCase implements Watcher {
   protected String hostPort = "127.0.0.1:22801";
@@ -68,12 +66,22 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
       return;
     }
 
-    List<String> children = zk.getChildren(nodeName, false);
-    if (children.size() == 0) {
+    List<String> children1 = zk.getChildren(nodeName, false);
+    List<String> c2 = zk.getChildren(nodeName, false, stat);
+
+    if (!children1.equals(c2)) {
+        fail("children lists from getChildren()/getChildren2() do not match");
+    }
+
+    if (!stat.equals(stat)) {
+        fail("stats from exists()/getChildren2() do not match");
+    }
+
+    if (children1.size() == 0) {
       zk.delete(nodeName, -1);
       return;
     }
-    for (String n : children) {
+    for (String n : children1) {
       deleteZKDir(zk, n);
     }
   }
@@ -133,7 +141,7 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
     if (stat == null) {
       fail("node " + nodeName + " should exist");
     }
-    System.out.println("Closing client with sessionid: 0x" 
+    System.out.println("Closing client with sessionid: 0x"
             + Long.toHexString(zk.getSessionId()));
     zk.close();
     zk = new ZooKeeper(hostPort, 10000, this);
@@ -164,8 +172,8 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
     ZooKeeper zk = new ZooKeeper(hostPort, 10000, this);
     ZooKeeper zk_1 = new ZooKeeper(hostPort, 10000, this);
 
-    Stat stat = zk_1.exists(parentName, false);
-    if (stat == null) {
+    Stat stat_parent = zk_1.exists(parentName, false);
+    if (stat_parent == null) {
       try {
         zk.create(parentName, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
       } catch (KeeperException ke) {
@@ -173,8 +181,8 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
       }
     }
 
-    stat = zk_1.exists(nodeName, false);
-    if (stat != null) {
+    Stat stat_node = zk_1.exists(nodeName, false);
+    if (stat_node != null) {
 
       try {
         zk.delete(nodeName, -1);
@@ -188,7 +196,17 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
       }
     }
 
-    List<String> firstGen = zk_1.getChildren(parentName, true);
+    List<String> firstGen1 = zk_1.getChildren(parentName, true);
+    Stat stat = new Stat();
+    List<String> firstGen2 = zk_1.getChildren(parentName, true, stat);
+
+    if (!firstGen1.equals(firstGen2)) {
+        fail("children lists from getChildren()/getChildren2() do not match");
+    }
+
+    if (!stat_parent.equals(stat)) {
+        fail("stat from exists()/getChildren() do not match");
+    }
 
     try {
       zk.create(nodeName, null, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
@@ -210,8 +228,8 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
       fail("Unexpected event was delivered: " + event.toString());
     }
 
-    stat = zk_1.exists(nodeName, false);
-    if (stat == null) {
+    stat_node = zk_1.exists(nodeName, false);
+    if (stat_node == null) {
       fail("node " + nodeName + " should exist");
     }
 
@@ -238,8 +256,14 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
     }
 
     try {
-      List<String> children = zk.getChildren(nodeName, false);
-      if (children.size() > 0) {
+      List<String> children1 = zk.getChildren(nodeName, false);
+      List<String> children2 = zk.getChildren(nodeName, false, null);
+
+      if (!children1.equals(children2)) {
+          fail("children lists from getChildren()/getChildren2() does not match");
+      }
+
+      if (children1.size() > 0) {
         fail("ephemeral node " + nodeName + " should not have children");
       }
     } catch (KeeperException ke) {
@@ -249,20 +273,26 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
         fail("Unexpected exception code for createin: " + code);
       }
     }
-    firstGen = zk_1.getChildren(parentName, true);
-    stat = zk_1.exists(nodeName, true);
-    if (stat == null) {
+    firstGen1 = zk_1.getChildren(parentName, true);
+    firstGen2 = zk_1.getChildren(parentName, true, null);
+
+    if (!firstGen1.equals(firstGen2)) {
+        fail("children list from getChildren()/getChildren2() does not match");
+    }
+
+    stat_node = zk_1.exists(nodeName, true);
+    if (stat_node == null) {
       fail("node " + nodeName + " should exist");
     }
     System.out.println("session id of zk: " + zk.getSessionId());
     System.out.println("session id of zk_1: " + zk_1.getSessionId());
     zk.close();
 
-    stat = zk_1.exists("nosuchnode", false);
+    Stat no_stat = zk_1.exists("nosuchnode", false);
 
     event = this.getEvent(10);
     if (event == null) {
-      throw new AssertionFailedError("First event was not delivered promptly");
+      throw new Error("First event was not delivered promptly");
     }
     if (!((event.getType() == EventType.NodeChildrenChanged &&
            event.getPath().equalsIgnoreCase(parentName)) ||
@@ -276,7 +306,7 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
     event = this.getEvent(10);
 
     if (event == null) {
-      throw new AssertionFailedError("Second event was not delivered promptly");
+      throw new Error("Second event was not delivered promptly");
     }
     if (!((event.getType() == EventType.NodeChildrenChanged &&
         event.getPath().equalsIgnoreCase(parentName)) ||
@@ -287,12 +317,12 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
       fail("Unexpected second event was delivered: " + event.toString());
     }
 
-    firstGen = zk_1.getChildren(parentName, false);
-    stat = zk_1.exists(nodeName, false);
-    if (stat != null) {
+    firstGen1 = zk_1.getChildren(parentName, false);
+    stat_node = zk_1.exists(nodeName, false);
+    if (stat_node != null) {
       fail("node " + nodeName + " should have been deleted");
     }
-    if (firstGen.contains(nodeName)) {
+    if (firstGen1.contains(nodeName)) {
       fail("node " + nodeName + " should not be a children");
     }
     deleteZKDir(zk_1, nodeName);
@@ -364,7 +394,6 @@ public class ZooKeeperTestClient extends TestCase implements Watcher {
     zk.close();
   }
 
-  @Test
   public void my_test_1() throws IOException,
           InterruptedException, KeeperException {
     enode_test_1();

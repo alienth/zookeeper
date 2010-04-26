@@ -26,7 +26,7 @@
 #include <time.h>
 
 #define TIME_NOW_BUF_SIZE 1024
-#define FORMAT_LOG_BUF_SIZE 2048
+#define FORMAT_LOG_BUF_SIZE 4096
 
 #ifdef THREADED
 #include <pthread.h>
@@ -91,21 +91,23 @@ void zoo_set_log_stream(FILE* stream){
 
 static const char* time_now(){
     struct timeval tv;
+    struct tm lt;
+    time_t now = 0;
+    size_t len = 0;
     char* now_str=get_time_buffer();
+    
     if(!now_str)
         return "time_now(): Failed to allocate memory buffer";
     
     gettimeofday(&tv,0);
 
-    const time_t now = tv.tv_sec;
-    struct tm lt;
+    now = tv.tv_sec;
     localtime_r(&now, &lt);
 
     // clone the format used by log4j ISO8601DateFormat
     // specifically: "yyyy-MM-dd HH:mm:ss,SSS"
 
-    size_t len = strftime(now_str,
-                          TIME_NOW_BUF_SIZE,
+    len = strftime(now_str, TIME_NOW_BUF_SIZE,
                           "%F %H:%M:%S",
                           &lt);
 
@@ -128,8 +130,8 @@ void log_message(ZooLogLevel curLevel,int line,const char* funcName,
     fprintf(LOGSTREAM, "%s:%d:%s@%s@%d: %s\n", time_now(),pid,
             dbgLevelStr[curLevel],funcName,line,message);
 #else
-    fprintf(LOGSTREAM, "%s:%d(0x%x):%s@%s@%d: %s\n", time_now(),pid,
-            (unsigned long)pthread_self(),
+    fprintf(LOGSTREAM, "%s:%d(0x%lx):%s@%s@%d: %s\n", time_now(),pid,
+            (unsigned long int)pthread_self(),
             dbgLevelStr[curLevel],funcName,line,message);
 #endif
     fflush(LOGSTREAM);

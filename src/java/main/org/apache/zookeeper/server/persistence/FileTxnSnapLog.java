@@ -109,7 +109,7 @@ public class FileTxnSnapLog {
     }
     
     /**
-     * this function restors the server 
+     * this function restores the server 
      * database after reading from the 
      * snapshots and transaction logs
      * @param dt the datatree to be restored
@@ -262,10 +262,11 @@ public class FileTxnSnapLog {
     /**
      * append the request to the transaction logs
      * @param si the request to be appended
+     * returns true iff something appended, otw false 
      * @throws IOException
      */
-    public void append(Request si) throws IOException {
-        txnLog.append(si.hdr, si.txn);
+    public boolean append(Request si) throws IOException {
+        return txnLog.append(si.hdr, si.txn);
     }
 
     /**
@@ -284,4 +285,12 @@ public class FileTxnSnapLog {
         txnLog.rollLog();
     }
     
+    /**
+     * close the transaction log files
+     * @throws IOException
+     */
+    public void close() throws IOException {
+        txnLog.close();
+        snapLog.close();
+    }
 }

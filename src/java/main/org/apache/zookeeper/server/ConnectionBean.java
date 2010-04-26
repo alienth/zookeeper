@@ -29,39 +29,56 @@ import javax.management.ObjectName;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.jmx.MBeanRegistry;
 import org.apache.zookeeper.jmx.ZKMBeanInfo;
+import org.apache.zookeeper.server.NIOServerCnxn.CnxnStats;
 
 /**
  * Implementation of connection MBean interface.
  */
 public class ConnectionBean implements ConnectionMXBean, ZKMBeanInfo {
     private static final Logger LOG = Logger.getLogger(ConnectionBean.class);
-    private ServerCnxn connection;
-    private ZooKeeperServer zk;
-    private Date timeCreated;
+
+    private final ServerCnxn connection;
+    private final CnxnStats stats;
+
+    private final ZooKeeperServer zk;
     
+    private final String remoteIP;
+    private final long sessionId;
+
     public ConnectionBean(ServerCnxn connection,ZooKeeperServer zk){
-        this.connection=connection;
-        this.zk=zk;
-        timeCreated=new Date();
+        this.connection = connection;
+        this.stats = (CnxnStats)connection.getStats();
+        this.zk = zk;
+        
+        InetSocketAddress sockAddr = connection.getRemoteAddress();
+        if (sockAddr == null) {
+            remoteIP = "Unknown";
+        } else {
+            InetAddress addr = sockAddr.getAddress();
+            if (addr instanceof Inet6Address) {
+                remoteIP = ObjectName.quote(addr.getHostAddress());
+            } else {
+                remoteIP = addr.getHostAddress();
+            }
+        }
+        sessionId = connection.getSessionId();
     }
     
     public String getSessionId() {
-        return "0x" + Long.toHexString(connection.getSessionId());
+        return "0x" + Long.toHexString(sessionId);
     }
 
     public String getSourceIP() {
         InetSocketAddress sockAddr = connection.getRemoteAddress();
+        if (sockAddr == null) {
+            return null;
+        }
         return sockAddr.getAddress().getHostAddress()
             + ":" + sockAddr.getPort();
     }
 
     public String getName() {
-        InetAddress addr = connection.getRemoteAddress().getAddress();
-        String ip = addr.getHostAddress();
-        if (addr instanceof Inet6Address) {
-            ip = ObjectName.quote(ip);
-        }
-        return MBeanRegistry.getInstance().makeFullPath("Connections", ip,
+        return MBeanRegistry.getInstance().makeFullPath("Connections", remoteIP,
                 getSessionId());
     }
     
@@ -70,8 +87,8 @@ public class ConnectionBean implements ConnectionMXBean, ZKMBeanInfo {
     }
     
     public String[] getEphemeralNodes() {
-        if(zk.dataTree!=null){
-            String[] res=zk.dataTree.getEphemerals(connection.getSessionId())
+        if(zk.getZKDatabase()  !=null){
+            String[] res= zk.getZKDatabase().getEphemerals(sessionId)
                 .toArray(new String[0]);
             Arrays.sort(res);
             return res;
@@ -80,12 +97,12 @@ public class ConnectionBean implements ConnectionMXBean, ZKMBeanInfo {
     }
     
     public String getStartedTime() {
-        return timeCreated.toString();
+        return stats.getEstablished().toString();
     }
     
     public void terminateSession() {
         try {
-            zk.closeSession(connection.getSessionId());
+            zk.closeSession(sessionId);
         } catch (Exception e) {
             LOG.warn("Unable to closeSession() for session: 0x" 
                     + getSessionId(), e);
@@ -93,7 +110,11 @@ public class ConnectionBean implements ConnectionMXBean, ZKMBeanInfo {
     }
     
     public void terminateConnection() {
-        connection.close();
+        connection.sendCloseSession();
+    }
+
+    public void resetCounters() {
+        stats.reset();
     }
 
     @Override
@@ -103,19 +124,50 @@ public class ConnectionBean implements ConnectionMXBean, ZKMBeanInfo {
     }
     
     public long getOutstandingRequests() {
-        return connection.getStats().getOutstandingRequests();
+        return stats.getOutstandingRequests();
     }
     
     public long getPacketsReceived() {
-        return connection.getStats().getPacketsReceived();
+        return stats.getPacketsReceived();
     }
     
     public long getPacketsSent() {
-        return connection.getStats().getPacketsSent();
+        return stats.getPacketsSent();
     }
     
     public int getSessionTimeout() {
         return connection.getSessionTimeout();
     }
 
+    public long getMinLatency() {
+        return stats.getMinLatency();
+    }
+
+    public long getAvgLatency() {
+        return stats.getAvgLatency();
+    }
+
+    public long getMaxLatency() {
+        return stats.getMaxLatency();
+    }
+    
+    public String getLastOperation() {
+        return stats.getLastOperation();
+    }
+
+    public String getLastCxid() {
+        return "0x" + Long.toHexString(stats.getLastCxid());
+    }
+
+    public String getLastZxid() {
+        return "0x" + Long.toHexString(stats.getLastZxid());
+    }
+
+    public String getLastResponseTime() {
+        return new Date(stats.getLastResponseTime()).toString();
+    }
+
+    public long getLastLatency() {
+        return stats.getLastLatency();
+    }
 }

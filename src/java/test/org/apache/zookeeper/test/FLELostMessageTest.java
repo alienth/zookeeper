@@ -22,13 +22,12 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.Semaphore;
 
 import junit.framework.TestCase;
 
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.server.quorum.FastLeaderElection;
 import org.apache.zookeeper.server.quorum.QuorumCnxManager;
 import org.apache.zookeeper.server.quorum.QuorumPeer;
@@ -60,8 +59,7 @@ import org.junit.Test;
 public class FLELostMessageTest extends TestCase {
     protected static final Logger LOG = Logger.getLogger(FLELostMessageTest.class);
 
-    int baseport;
-    int baseLEport;
+    
     int count;
     HashMap<Long,QuorumServer> peers;
     File tmpdir[];
@@ -71,9 +69,6 @@ public class FLELostMessageTest extends TestCase {
    
     @Override
     public void setUp() throws Exception {
-        this.baseport= 33003;
-        this.baseLEport = 43003;
-        
         count = 3;
 
         peers = new HashMap<Long,QuorumServer>(count);
@@ -134,12 +129,13 @@ public class FLELostMessageTest extends TestCase {
         
         LOG.info("TestLE: " + getName()+ ", " + count);
         for(int i = 0; i < count; i++) {
+            int clientport = PortAssignment.unique();
             peers.put(Long.valueOf(i),
                     new QuorumServer(i,
-                            new InetSocketAddress(baseport + i),
-                            new InetSocketAddress(baseLEport + i)));
+                            new InetSocketAddress(clientport),
+                            new InetSocketAddress(PortAssignment.unique())));
             tmpdir[i] = ClientBase.createTmpDir();
-            port[i] = baseport + i;
+            port[i] = clientport;
         }
         
         /*
@@ -191,8 +187,8 @@ public class FLELostMessageTest extends TestCase {
             LOG.error("Null listener when initializing cnx manager");
         }
         
-        cnxManager.toSend(new Long(1), createMsg(ServerState.LOOKING.ordinal(), 0, -1, 1));
+        cnxManager.toSend(new Long(1), createMsg(ServerState.LOOKING.ordinal(), 0, 0, 1));
         cnxManager.recvQueue.take();
-        cnxManager.toSend(new Long(1), createMsg(ServerState.FOLLOWING.ordinal(), 1, -1, 1));  
+        cnxManager.toSend(new Long(1), createMsg(ServerState.FOLLOWING.ordinal(), 1, 0, 1));  
     }
 }

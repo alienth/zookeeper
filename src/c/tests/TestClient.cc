@@ -36,7 +36,31 @@ using namespace std;
 #include <list>
 
 #include <zookeeper.h>
+#include <errno.h>
+#include <recordio.h>
+#include "Util.h"
 
+struct buff_struct_2 {
+    int32_t len;
+    int32_t off;
+    char *buffer;
+};
+
+static int Stat_eq(struct Stat* a, struct Stat* b)
+{
+    if (a->czxid != b->czxid) return 0;
+    if (a->mzxid != b->mzxid) return 0;
+    if (a->ctime != b->ctime) return 0;
+    if (a->mtime != b->mtime) return 0;
+    if (a->version != b->version) return 0;
+    if (a->cversion != b->cversion) return 0;
+    if (a->aversion != b->aversion) return 0;
+    if (a->ephemeralOwner != b->ephemeralOwner) return 0;
+    if (a->dataLength != b->dataLength) return 0;
+    if (a->numChildren != b->numChildren) return 0;
+    if (a->pzxid != b->pzxid) return 0;
+    return 1;
+}
 #ifdef THREADED
     static void yield(zhandle_t *zh, int i)
     {
@@ -50,7 +74,7 @@ using namespace std;
         int events;
         struct timeval tv;
         int rc;
-        time_t expires = time(0) + seconds; 
+        time_t expires = time(0) + seconds;
         time_t timeLeft = seconds;
         fd_set rfds, wfds, efds;
         FD_ZERO(&rfds);
@@ -155,22 +179,26 @@ public:
         }
         return !connected;
     }
-} watchctx_t; 
+} watchctx_t;
 
 class Zookeeper_simpleSystem : public CPPUNIT_NS::TestFixture
 {
     CPPUNIT_TEST_SUITE(Zookeeper_simpleSystem);
     CPPUNIT_TEST(testAsyncWatcherAutoReset);
+    CPPUNIT_TEST(testDeserializeString);
 #ifdef THREADED
     CPPUNIT_TEST(testNullData);
+    CPPUNIT_TEST(testIPV6);
     CPPUNIT_TEST(testPath);
     CPPUNIT_TEST(testPathValidation);
     CPPUNIT_TEST(testPing);
     CPPUNIT_TEST(testAcl);
     CPPUNIT_TEST(testChroot);
     CPPUNIT_TEST(testAuth);
+    CPPUNIT_TEST(testHangingClient);
     CPPUNIT_TEST(testWatcherAutoResetWithGlobal);
     CPPUNIT_TEST(testWatcherAutoResetWithLocal);
+    CPPUNIT_TEST(testGetChildren2);
 #endif
     CPPUNIT_TEST_SUITE_END();
 
@@ -197,37 +225,43 @@ class Zookeeper_simpleSystem : public CPPUNIT_NS::TestFixture
     }
     
     zhandle_t *createClient(watchctx_t *ctx) {
-        zhandle_t *zk = zookeeper_init(hostPorts, watcher, 10000, 0,
-                                       ctx, 0);
+        return createClient(hostPorts, ctx);
+    }
+
+    zhandle_t *createClient(const char *hp, watchctx_t *ctx) {
+        zhandle_t *zk = zookeeper_init(hp, watcher, 10000, 0, ctx, 0);
         ctx->zh = zk;
         sleep(1);
         return zk;
     }
     
-    zhandle_t *createchClient(watchctx_t *ctx) {
-        zhandle_t *zk = zookeeper_init(hp_chroot, watcher, 10000, 0,
-                                       ctx, 0);
+    zhandle_t *createchClient(watchctx_t *ctx, const char* chroot) {
+        zhandle_t *zk = zookeeper_init(chroot, watcher, 10000, 0, ctx, 0);
         ctx->zh = zk;
         sleep(1);
         return zk;
     }
         
+    FILE *logfile;
 public:
 
+    Zookeeper_simpleSystem() {
+      logfile = openlogfile("Zookeeper_simpleSystem");
+    }
+
+    ~Zookeeper_simpleSystem() {
+      if (logfile) {
+        fflush(logfile);
+        fclose(logfile);
+        logfile = 0;
+      }
+    }
 
     void setUp()
     {
-        char cmd[1024];
-        sprintf(cmd, "%s startClean %s", ZKSERVER_CMD, getHostPorts());
-        CPPUNIT_ASSERT(system(cmd) == 0);
-
-        struct sigaction act;
-        act.sa_handler = SIG_IGN;
-        sigemptyset(&act.sa_mask);
-        act.sa_flags = 0;
-        CPPUNIT_ASSERT(sigaction(SIGPIPE, &act, NULL) == 0);
+        zoo_set_log_stream(logfile);
     }
-    
+
 
     void startServer() {
         char cmd[1024];
@@ -236,47 +270,76 @@ public:
     }
 
     void stopServer() {
-        tearDown();
-    }
-
-    void tearDown()
-    {
         char cmd[1024];
         sprintf(cmd, "%s stop %s", ZKSERVER_CMD, getHostPorts());
         CPPUNIT_ASSERT(system(cmd) == 0);
     }
+
+    void tearDown()
+    {
+    }
     
+    /** have a callback in the default watcher **/
+    static void default_zoo_watcher(zhandle_t *zzh, int type, int state, const char *path, void *context){
+        int zrc = 0;
+        struct String_vector str_vec = {0, NULL};
+        zrc = zoo_wget_children(zzh, "/mytest", default_zoo_watcher, NULL, &str_vec);
+    }
+    
+    /** this checks for a deadlock in calling zookeeper_close and calls from a default watcher that might get triggered just when zookeeper_close() is in progress **/
+    void testHangingClient() {
+        int zrc = 0;
+        char buff[10] = "testall";
+        char path[512];
+        watchctx_t *ctx;
+        struct String_vector str_vec = {0, NULL};
+        zhandle_t *zh = zookeeper_init(hostPorts, NULL, 10000, 0, ctx, 0);
+        sleep(1);
+        zrc = zoo_create(zh, "/mytest", buff, 10, &ZOO_OPEN_ACL_UNSAFE, 0, path, 512);
+        zrc = zoo_wget_children(zh, "/mytest", default_zoo_watcher, NULL, &str_vec);
+        zrc = zoo_create(zh, "/mytest/test1", buff, 10, &ZOO_OPEN_ACL_UNSAFE, 0, path, 512);
+        zrc = zoo_wget_children(zh, "/mytest", default_zoo_watcher, NULL, &str_vec);
+        zrc = zoo_delete(zh, "/mytest/test1", -1);
+        zookeeper_close(zh);
+    }
+    
+
     void testPing()
     {
         watchctx_t ctxIdle;
         watchctx_t ctxWC;
         zhandle_t *zkIdle = createClient(&ctxIdle);
         zhandle_t *zkWatchCreator = createClient(&ctxWC);
-        int rc;
-        char path[80];
+
         CPPUNIT_ASSERT(zkIdle);
         CPPUNIT_ASSERT(zkWatchCreator);
+
+        char path[80];
+        sprintf(path, "/testping");
+        int rc = zoo_create(zkWatchCreator, path, "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
+
         for(int i = 0; i < 30; i++) {
-            sprintf(path, "/%i", i);
+            sprintf(path, "/testping/%i", i);
             rc = zoo_create(zkWatchCreator, path, "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
             CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
         }
 
         for(int i = 0; i < 30; i++) {
-            sprintf(path, "/%i", i);
+            sprintf(path, "/testping/%i", i);
             struct Stat stat;
             rc = zoo_exists(zkIdle, path, 1, &stat);
             CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
         }
 
         for(int i = 0; i < 30; i++) {
-            sprintf(path, "/%i", i);
+            sprintf(path, "/testping/%i", i);
             usleep(500000);
             rc = zoo_delete(zkWatchCreator, path, -1);
             CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
         }
         struct Stat stat;
-        CPPUNIT_ASSERT_EQUAL((int)ZNONODE, zoo_exists(zkIdle, "/0", 0, &stat));
+        CPPUNIT_ASSERT_EQUAL((int)ZNONODE, zoo_exists(zkIdle, "/testping/0", 0, &stat));
     }
 
     bool waitForEvent(zhandle_t *zh, watchctx_t *ctx, int seconds) {
@@ -288,11 +351,11 @@ public:
     }
 
 #define COUNT 100
-    
+
     static zhandle_t *async_zk;
     static volatile int count;
-    static char* hp_chroot;
-    
+    static const char* hp_chroot;
+
     static void statCompletion(int rc, const struct Stat *stat, const void *data) {
         int tmp = (int) (long) data;
         CPPUNIT_ASSERT_EQUAL(tmp, rc);
@@ -300,7 +363,7 @@ public:
 
     static void stringCompletion(int rc, const char *value, const void *data) {
         char *path = (char*)data;
-        
+
         if (rc == ZCONNECTIONLOSS && path) {
             // Try again
             rc = zoo_acreate(async_zk, path, "", 0,  &ZOO_OPEN_ACL_UNSAFE, 0, stringCompletion, 0);
@@ -311,12 +374,12 @@ public:
             free(path);
         }
     }
-    
+
     static void create_completion_fn(int rc, const char* value, const void *data) {
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
         count++;
     }
-    
+
     static void waitForCreateCompletion(int seconds) {
         time_t expires = time(0) + seconds;
         while(count == 0 && time(0) < expires) {
@@ -332,7 +395,7 @@ public:
         CPPUNIT_ASSERT(strcmp(client_path, path) == 0);
         count ++;
     }
-    
+
     static void waitForChrootWatch(int seconds) {
         time_t expires = time(0) + seconds;
         while (count == 0 && time(0) < expires) {
@@ -348,34 +411,34 @@ public:
         }
         count--;
     }
-    
+
     static void voidCompletion(int rc, const void *data) {
         int tmp = (int) (long) data;
         CPPUNIT_ASSERT_EQUAL(tmp, rc);
         count++;
     }
-    
+
     static void verifyCreateFails(const char *path, zhandle_t *zk) {
       CPPUNIT_ASSERT_EQUAL((int)ZBADARGUMENTS, zoo_create(zk,
           path, "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0));
     }
-    
+
     static void verifyCreateOk(const char *path, zhandle_t *zk) {
       CPPUNIT_ASSERT_EQUAL((int)ZOK, zoo_create(zk,
           path, "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0));
     }
-    
+
     static void verifyCreateFailsSeq(const char *path, zhandle_t *zk) {
       CPPUNIT_ASSERT_EQUAL((int)ZBADARGUMENTS, zoo_create(zk,
           path, "", 0, &ZOO_OPEN_ACL_UNSAFE, ZOO_SEQUENCE, 0, 0));
     }
-    
+
     static void verifyCreateOkSeq(const char *path, zhandle_t *zk) {
       CPPUNIT_ASSERT_EQUAL((int)ZOK, zoo_create(zk,
           path, "", 0, &ZOO_OPEN_ACL_UNSAFE, ZOO_SEQUENCE, 0, 0));
     }
-    
-            
+
+
     /**
        returns false if the vectors dont match
     **/
@@ -399,13 +462,27 @@ public:
         return true;
     }
 
+    void testDeserializeString() {
+        char *val_str;
+        int rc = 0;
+        int val = -1;
+        struct iarchive *ia;
+        struct buff_struct_2 *b;
+        struct oarchive *oa = create_buffer_oarchive();
+        oa->serialize_Int(oa, "int", &val);
+        b = (struct buff_struct_2 *) oa->priv;
+        ia = create_buffer_iarchive(b->buffer, b->len);
+        rc = ia->deserialize_String(ia, "string", &val_str);
+        CPPUNIT_ASSERT_EQUAL(-EINVAL, rc);
+    }
+        
     void testAcl() {
         int rc;
         struct ACL_vector aclvec;
         struct Stat stat;
         watchctx_t ctx;
         zhandle_t *zk = createClient(&ctx);
-        rc = zoo_create(zk, "/acl", "", 0, 
+        rc = zoo_create(zk, "/acl", "", 0,
                         &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
         CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
         rc = zoo_get_acl(zk, "/acl", &aclvec, &stat  );
@@ -430,18 +507,18 @@ public:
         struct ACL acl_val;
         rc = zoo_add_auth(0, "", 0, 0, voidCompletion, (void*)-1);
         CPPUNIT_ASSERT_EQUAL((int) ZBADARGUMENTS, rc);
-        
+
         rc = zoo_add_auth(zk, 0, 0, 0, voidCompletion, (void*)-1);
         CPPUNIT_ASSERT_EQUAL((int) ZBADARGUMENTS, rc);
-        
+
         // auth as pat, create /tauth1, close session
         rc = zoo_add_auth(zk, "digest", "pat:passwd", 10, voidCompletion,
                           (void*)ZOK);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
         waitForVoidCompletion(3);
-                
+
         CPPUNIT_ASSERT(count == 0);
-        
+
         rc = zoo_create(zk, "/tauth1", "", 0, &ZOO_CREATOR_ALL_ACL, 0, 0, 0);
         CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
 
@@ -467,7 +544,7 @@ public:
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
         waitForVoidCompletion(3);
         CPPUNIT_ASSERT(count == 0);
-                
+
         char buf[1024];
         int blen = sizeof(buf);
         struct Stat stat;
@@ -476,7 +553,7 @@ public:
         // add auth pat w/correct pass verify success
         rc = zoo_add_auth(zk, "digest", "pat:passwd", 10, voidCompletion,
                           (void*)ZOK);
-        
+
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
         rc = zoo_get(zk, "/tauth1", 0, buf, &blen, &stat);
         CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
@@ -491,7 +568,7 @@ public:
         //make the server forget the auths
         waitForVoidCompletion(3);
         CPPUNIT_ASSERT(count == 0);
-     
+
         stopServer();
         CPPUNIT_ASSERT(ctx3.waitForDisconnected(zk));
         startServer();
@@ -503,7 +580,7 @@ public:
         rc = zoo_get_acl(zk, "/", &nodeAcl, &stat);
         CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
         // check if the acl has all the perms
-        CPPUNIT_ASSERT_EQUAL((int)1, nodeAcl.count);
+        CPPUNIT_ASSERT_EQUAL((int)1, (int)nodeAcl.count);
         acl_val = *(nodeAcl.data);
         CPPUNIT_ASSERT_EQUAL((int) acl_val.perms, ZOO_PERM_ALL);
         // verify on root node
@@ -513,13 +590,56 @@ public:
         rc = zoo_set_acl(zk, "/", -1, &ZOO_OPEN_ACL_UNSAFE);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
     }
-    
+
+    void testGetChildren2() {
+        int rc;
+        watchctx_t ctx;
+        zhandle_t *zk = createClient(&ctx);
+
+        rc = zoo_create(zk, "/parent", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
+
+        rc = zoo_create(zk, "/parent/child_a", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
+
+        rc = zoo_create(zk, "/parent/child_b", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
+
+        rc = zoo_create(zk, "/parent/child_c", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
+
+        rc = zoo_create(zk, "/parent/child_d", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
+
+        struct String_vector strings;
+        struct Stat stat_a, stat_b;
+
+        rc = zoo_get_children2(zk, "/parent", 0, &strings, &stat_a);
+        CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
+
+        rc = zoo_exists(zk, "/parent", 0, &stat_b);
+        CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
+
+        CPPUNIT_ASSERT(Stat_eq(&stat_a, &stat_b));
+        CPPUNIT_ASSERT(stat_a.numChildren == 4);
+    }
+
+    void testIPV6() {
+        watchctx_t ctx;
+        zhandle_t *zk = createClient("::1:22181", &ctx);
+        CPPUNIT_ASSERT(zk);
+        int rc = 0;
+        rc = zoo_create(zk, "/ipv6", NULL, -1,
+                        &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
+    }
+
     void testNullData() {
         watchctx_t ctx;
         zhandle_t *zk = createClient(&ctx);
         CPPUNIT_ASSERT(zk);
         int rc = 0;
-        rc = zoo_create(zk, "/mahadev", NULL, -1, 
+        rc = zoo_create(zk, "/mahadev", NULL, -1,
                         &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
         char buffer[512];
@@ -537,41 +657,41 @@ public:
 
     void testPath() {
         watchctx_t ctx;
-        char pathbuf[10];
+        char pathbuf[20];
         zhandle_t *zk = createClient(&ctx);
         CPPUNIT_ASSERT(zk);
         int rc = 0;
 
-        memset(pathbuf, 'X', 10);
-        rc = zoo_create(zk, "/path0", "", 0, 
+        memset(pathbuf, 'X', 20);
+        rc = zoo_create(zk, "/testpathpath0", "", 0,
                         &ZOO_OPEN_ACL_UNSAFE, 0, pathbuf, 0);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
         CPPUNIT_ASSERT_EQUAL('X', pathbuf[0]);
 
-        rc = zoo_create(zk, "/path1", "", 0, 
+        rc = zoo_create(zk, "/testpathpath1", "", 0,
                         &ZOO_OPEN_ACL_UNSAFE, 0, pathbuf, 1);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
         CPPUNIT_ASSERT(strlen(pathbuf) == 0);
 
-        rc = zoo_create(zk, "/path2", "", 0, 
+        rc = zoo_create(zk, "/testpathpath2", "", 0,
                         &ZOO_OPEN_ACL_UNSAFE, 0, pathbuf, 2);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
         CPPUNIT_ASSERT(strcmp(pathbuf, "/") == 0);
 
-        rc = zoo_create(zk, "/path3", "", 0, 
+        rc = zoo_create(zk, "/testpathpath3", "", 0,
                         &ZOO_OPEN_ACL_UNSAFE, 0, pathbuf, 3);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
-        CPPUNIT_ASSERT(strcmp(pathbuf, "/p") == 0);
+        CPPUNIT_ASSERT(strcmp(pathbuf, "/t") == 0);
 
-        rc = zoo_create(zk, "/path7", "", 0, 
-                        &ZOO_OPEN_ACL_UNSAFE, 0, pathbuf, 7);
+        rc = zoo_create(zk, "/testpathpath7", "", 0,
+                        &ZOO_OPEN_ACL_UNSAFE, 0, pathbuf, 15);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
-        CPPUNIT_ASSERT(strcmp(pathbuf, "/path7") == 0);
+        CPPUNIT_ASSERT(strcmp(pathbuf, "/testpathpath7") == 0);
 
-        rc = zoo_create(zk, "/path8", "", 0, 
-                        &ZOO_OPEN_ACL_UNSAFE, 0, pathbuf, 8);
+        rc = zoo_create(zk, "/testpathpath8", "", 0,
+                        &ZOO_OPEN_ACL_UNSAFE, 0, pathbuf, 16);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
-        CPPUNIT_ASSERT(strcmp(pathbuf, "/path8") == 0);
+        CPPUNIT_ASSERT(strcmp(pathbuf, "/testpathpath8") == 0);
     }
 
     void testPathValidation() {
@@ -624,10 +744,10 @@ public:
         verifyCreateOk("/f/.f/f", zk);
         verifyCreateOk("/f/f./f", zk);
     }
-    
+
     void testChroot() {
-        // the c client async callbacks do 
-        // not callback with the path, so 
+        // the c client async callbacks do
+        // not callback with the path, so
         // we dont need to test taht for now
         // we should fix that though soon!
         watchctx_t ctx, ctx_ch;
@@ -636,15 +756,14 @@ public:
         int rc, len;
         struct Stat stat;
         const char* data = "garbage";
-        const char* retStr = "/chroot"; 
+        const char* retStr = "/chroot";
         const char* root= "/";
-        hp_chroot = "127.0.0.1:22181/test/mahadev";
-        zk_ch = createchClient(&ctx_ch);
+        zk_ch = createchClient(&ctx_ch, "127.0.0.1:22181/testch1/mahadev");
         CPPUNIT_ASSERT(zk_ch != NULL);
         zk = createClient(&ctx);
-        rc = zoo_create(zk, "/test", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        rc = zoo_create(zk, "/testch1", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
-        rc = zoo_create(zk, "/test/mahadev", data, 7, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        rc = zoo_create(zk, "/testch1/mahadev", data, 7, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
         // try an exists with /
         len = 60;
@@ -652,9 +771,9 @@ public:
         CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
         //check if the data is the same
         CPPUNIT_ASSERT(strncmp(buf, data, 7) == 0);
-        //check for watches 
+        //check for watches
         rc = zoo_wexists(zk_ch, "/chroot", watcher_chroot_fn, (void *) retStr, &stat);
-        //now check if we can do create/delete/get/sets/acls/getChildren and others 
+        //now check if we can do create/delete/get/sets/acls/getChildren and others
         //check create
         rc = zoo_create(zk_ch, "/chroot", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0,0);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
@@ -662,12 +781,12 @@ public:
         CPPUNIT_ASSERT(count == 0);
         rc = zoo_create(zk_ch, "/chroot/child", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
-        rc = zoo_exists(zk, "/test/mahadev/chroot/child", 0, &stat);
+        rc = zoo_exists(zk, "/testch1/mahadev/chroot/child", 0, &stat);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
-        
+
         rc = zoo_delete(zk_ch, "/chroot/child", -1);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
-        rc = zoo_exists(zk, "/test/mahadev/chroot/child", 0, &stat);
+        rc = zoo_exists(zk, "/testch1/mahadev/chroot/child", 0, &stat);
         CPPUNIT_ASSERT_EQUAL((int) ZNONODE, rc);
         rc = zoo_wget(zk_ch, "/chroot", watcher_chroot_fn, (char*) retStr,
                       buf, &len, &stat);
@@ -680,15 +799,15 @@ public:
         struct String_vector children;
         rc = zoo_get_children(zk_ch, "/", 0, &children);
         CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
-        CPPUNIT_ASSERT_EQUAL((int)1, children.count);
+        CPPUNIT_ASSERT_EQUAL((int)1, (int)children.count);
         //check if te child if chroot
         CPPUNIT_ASSERT(strcmp((retStr+1), children.data[0]) == 0);
         // check for get/set acl
         struct ACL_vector acl;
         rc = zoo_get_acl(zk_ch, "/", &acl, &stat);
         CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
-        CPPUNIT_ASSERT_EQUAL((int)1, acl.count);
-        CPPUNIT_ASSERT_EQUAL(ZOO_PERM_ALL, acl.data->perms);
+        CPPUNIT_ASSERT_EQUAL((int)1, (int)acl.count);
+        CPPUNIT_ASSERT_EQUAL((int)ZOO_PERM_ALL, (int)acl.data->perms);
         // set acl
         rc = zoo_set_acl(zk_ch, "/chroot", -1,  &ZOO_READ_ACL_UNSAFE);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
@@ -698,19 +817,19 @@ public:
         //add wget children test
         rc = zoo_wget_children(zk_ch, "/", watcher_chroot_fn, (char*) root, &children);
         CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
-        
+
         //now create a node
         rc = zoo_create(zk_ch, "/child2", "",0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
         CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
         waitForChrootWatch(3);
         CPPUNIT_ASSERT(count == 0);
         //check for one async call just to make sure
-        rc = zoo_acreate(zk_ch, "/child3", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 
+        rc = zoo_acreate(zk_ch, "/child3", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0,
                          create_completion_fn, 0);
         waitForCreateCompletion(3);
         CPPUNIT_ASSERT(count == 0);
     }
-        
+
     void testAsyncWatcherAutoReset()
     {
         watchctx_t ctx;
@@ -723,7 +842,7 @@ public:
 
         async_zk = zk;
         for(i = 0; i < COUNT; i++) {
-            sprintf(path, "/%d", i);
+            sprintf(path, "/awar%d", i);
             rc = zoo_awexists(zk, path, watcher, &lctx[i], statCompletion, (void*)ZNONODE);
             CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
         }
@@ -731,14 +850,14 @@ public:
         yield(zk, 0);
 
         for(i = 0; i < COUNT/2; i++) {
-            sprintf(path, "/%d", i);
+            sprintf(path, "/awar%d", i);
             rc = zoo_acreate(zk, path, "", 0,  &ZOO_OPEN_ACL_UNSAFE, 0, stringCompletion, strdup(path));
             CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
         }
 
         yield(zk, 3);
         for(i = 0; i < COUNT/2; i++) {
-            sprintf(path, "/%d", i);
+            sprintf(path, "/awar%d", i);
             CPPUNIT_ASSERT_MESSAGE(path, waitForEvent(zk, &lctx[i], 5));
             evt = lctx[i].getEvent();
             CPPUNIT_ASSERT_EQUAL_MESSAGE(evt.path.c_str(), ZOO_CREATED_EVENT, evt.type);
@@ -746,11 +865,11 @@ public:
         }
 
         for(i = COUNT/2 + 1; i < COUNT*10; i++) {
-            sprintf(path, "/%d", i);
+            sprintf(path, "/awar%d", i);
             rc = zoo_acreate(zk, path, "", 0,  &ZOO_OPEN_ACL_UNSAFE, 0, stringCompletion, strdup(path));
             CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
         }
-        
+
         yield(zk, 1);
         stopServer();
         CPPUNIT_ASSERT(ctx.waitForDisconnected(zk));
@@ -758,7 +877,7 @@ public:
         CPPUNIT_ASSERT(ctx.waitForConnected(zk));
         yield(zk, 3);
         for(i = COUNT/2+1; i < COUNT; i++) {
-            sprintf(path, "/%d", i);
+            sprintf(path, "/awar%d", i);
             CPPUNIT_ASSERT_MESSAGE(path, waitForEvent(zk, &lctx[i], 5));
             evt = lctx[i].getEvent();
             CPPUNIT_ASSERT_EQUAL_MESSAGE(evt.path, ZOO_CREATED_EVENT, evt.type);
@@ -766,7 +885,7 @@ public:
         }
     }
 
-    void testWatcherAutoReset(zhandle_t *zk, watchctx_t *ctxGlobal, 
+    void testWatcherAutoReset(zhandle_t *zk, watchctx_t *ctxGlobal,
                               watchctx_t *ctxLocal)
     {
         bool isGlobal = (ctxGlobal == ctxLocal);
@@ -777,7 +896,7 @@ public:
         struct String_vector strings;
         const char *testName;
 
-        rc = zoo_create(zk, "/watchtest", "", 0, 
+        rc = zoo_create(zk, "/watchtest", "", 0,
                         &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
         CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
         rc = zoo_create(zk, "/watchtest/child", "", 0,
@@ -808,7 +927,7 @@ public:
                             &stat);
             CPPUNIT_ASSERT_EQUAL((int)ZNONODE, rc);
         }
-        
+
         CPPUNIT_ASSERT(ctxLocal->countEvents() == 0);
 
         stopServer();
@@ -833,7 +952,7 @@ public:
         CPPUNIT_ASSERT_EQUAL((int)ZOK, rc);
 
         CPPUNIT_ASSERT_MESSAGE(testName, waitForEvent(zk, ctxLocal, 5));
-        
+
         evt_t evt = ctxLocal->getEvent();
         CPPUNIT_ASSERT_EQUAL_MESSAGE(evt.path, ZOO_CHANGED_EVENT, evt.type);
         CPPUNIT_ASSERT_EQUAL(string("/watchtest/child"), evt.path);
@@ -853,7 +972,7 @@ public:
         sleep(5);
 
         CPPUNIT_ASSERT(ctxLocal->countEvents() == 0);
-        
+
         stopServer();
         CPPUNIT_ASSERT_MESSAGE(testName, ctxGlobal->waitForDisconnected(zk));
         startServer();
@@ -887,11 +1006,11 @@ public:
         zoo_delete(zk, "/watchtest/child2", -1);
 
         CPPUNIT_ASSERT_MESSAGE(testName, waitForEvent(zk, ctxLocal, 5));
-        
+
         evt = ctxLocal->getEvent();
         CPPUNIT_ASSERT_EQUAL_MESSAGE(evt.path, ZOO_DELETED_EVENT, evt.type);
         CPPUNIT_ASSERT_EQUAL(string("/watchtest/child2"), evt.path);
-        
+
         CPPUNIT_ASSERT_MESSAGE(testName, waitForEvent(zk, ctxLocal, 5));
         evt = ctxLocal->getEvent();
         CPPUNIT_ASSERT_EQUAL_MESSAGE(evt.path, ZOO_CHILD_EVENT, evt.type);
@@ -906,7 +1025,7 @@ public:
         zoo_delete(zk, "/watchtest", -1);
 
         CPPUNIT_ASSERT_MESSAGE(testName, waitForEvent(zk, ctxLocal, 5));
-        
+
         evt = ctxLocal->getEvent();
         CPPUNIT_ASSERT_EQUAL_MESSAGE(evt.path, ZOO_DELETED_EVENT, evt.type);
         CPPUNIT_ASSERT_EQUAL(string("/watchtest/child"), evt.path);
@@ -914,26 +1033,48 @@ public:
         // Make sure nothing is straggling
         sleep(1);
         CPPUNIT_ASSERT(ctxLocal->countEvents() == 0);
-    }        
+    }
 
     void testWatcherAutoResetWithGlobal()
     {
+      {
         watchctx_t ctx;
         zhandle_t *zk = createClient(&ctx);
+        int rc = zoo_create(zk, "/testarwg", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
+        rc = zoo_create(zk, "/testarwg/arwg", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
+      }
+
+      {
+        watchctx_t ctx;
+        zhandle_t *zk = createchClient(&ctx, "127.0.0.1:22181/testarwg/arwg");
+
         testWatcherAutoReset(zk, &ctx, &ctx);
+      }
     }
 
     void testWatcherAutoResetWithLocal()
     {
+      {
+        watchctx_t ctx;
+        zhandle_t *zk = createClient(&ctx);
+        int rc = zoo_create(zk, "/testarwl", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
+        rc = zoo_create(zk, "/testarwl/arwl", "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, 0, 0);
+        CPPUNIT_ASSERT_EQUAL((int) ZOK, rc);
+      }
+
+      {
         watchctx_t ctx;
         watchctx_t lctx;
-        zhandle_t *zk = createClient(&ctx);
+        zhandle_t *zk = createchClient(&ctx, "127.0.0.1:22181/testarwl/arwl");
         testWatcherAutoReset(zk, &ctx, &lctx);
+      }
     }
 };
 
 volatile int Zookeeper_simpleSystem::count;
 zhandle_t *Zookeeper_simpleSystem::async_zk;
 const char Zookeeper_simpleSystem::hostPorts[] = "127.0.0.1:22181";
-char* Zookeeper_simpleSystem::hp_chroot;
 CPPUNIT_TEST_SUITE_REGISTRATION(Zookeeper_simpleSystem);

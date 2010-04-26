@@ -224,15 +224,29 @@ PyObject *build_stat( const struct Stat *stat )
 
 PyObject *build_string_vector(const struct String_vector *sv)
 {
-	if (!sv) {
-		return PyList_New(0);
-	}
-  PyObject *ret = PyList_New(sv->count);
-  int i;
-  for (i=0;i<sv->count;++i) 
+  PyObject *ret;
+  if (!sv)
     {
-      PyObject *s = PyString_FromString(sv->data[i]);
-      PyList_SetItem(ret, i, s);
+      ret = PyList_New(0);
+    }
+  else
+    {
+      ret = PyList_New(sv->count);
+      if (ret)
+        {
+          int i;
+          for (i=0;i<sv->count;++i) 
+            {
+              PyObject *s = PyString_FromString(sv->data[i]);
+              if (!s)
+                {
+                  Py_DECREF(ret);
+                  ret = NULL;
+                  break;
+                }
+              PyList_SetItem(ret, i, s);
+            }
+        }
     }
   return ret;
 }
@@ -407,8 +421,14 @@ void strings_completion_dispatch(int rc, const struct String_vector *strings, co
     return;
   PyObject *callback = pyw->callback;
   gstate = PyGILState_Ensure();
-  PyObject *arglist = Py_BuildValue("(i,i,O)", pyw->zhandle,rc, build_string_vector(strings));
-  if (PyObject_CallObject((PyObject*)callback, arglist) == NULL)
+  PyObject *pystrings = build_string_vector(strings);
+  if (pystrings)
+    {
+      PyObject *arglist = Py_BuildValue("(i,i,O)", pyw->zhandle, rc, pystrings);
+      if (arglist == NULL || PyObject_CallObject((PyObject*)callback, arglist) == NULL)
+        PyErr_Print();
+    }
+  else
     PyErr_Print();
   free_pywatcher(pyw);
   PyGILState_Release(gstate);
@@ -444,6 +464,24 @@ void acl_completion_dispatch(int rc, struct ACL_vector *acl, struct Stat *stat, 
   PyGILState_Release(gstate);
 }
 
+int check_is_acl(PyObject *o) {
+	int i;
+	if (!PyList_Check(o)) {
+		return 0;
+	}
+	for (i=0;i<PyList_Size(o);++i) {
+		if (!PyDict_Check(PyList_GetItem(o,i))) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+#define CHECK_ACLS(o) if (check_is_acl(o) == 0) {\
+	PyErr_SetString(err_to_exception(ZINVALIDACL), zerror(ZINVALIDACL));\
+	return NULL;\
+ }
+
 ///////////////////////////////////////////////////////
 // Asynchronous API
 PyObject *pyzoo_acreate(PyObject *self, PyObject *args)
@@ -455,25 +493,23 @@ PyObject *pyzoo_acreate(PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple(args, "iss#O|iO", &zkhid, &path, &value, &valuelen, &pyacls, &flags, &completion_callback))
     return NULL;
   CHECK_ZHANDLE(zkhid);
-
-  if (pyacls != Py_None)
-    parse_acls(&acl, pyacls);
+  CHECK_ACLS(pyacls);
+  parse_acls(&acl, pyacls);
   int err = zoo_acreate( zhandles[zkhid],
-			 path,
-			 value,
-			 valuelen,
-			 pyacls == Py_None ? NULL : &acl,
-			 flags,
-			 string_completion_dispatch,
-			 completion_callback != Py_None ? create_pywatcher(zkhid, completion_callback,0 ) : NULL );
-    
+                         path,
+                         value,
+                         valuelen,
+                         pyacls == Py_None ? NULL : &acl,
+                         flags,
+                         string_completion_dispatch,
+                         completion_callback != Py_None ? create_pywatcher(zkhid, completion_callback,0 ) : NULL );	
   free_acls(&acl);
   if (err != ZOK)
     {
       PyErr_SetString(err_to_exception(err), zerror(err));
       return NULL;
     }
-  return Py_BuildValue("i", err);;
+  return Py_BuildValue("i", err);
 }
 
 PyObject *pyzoo_adelete(PyObject *self, PyObject *args)
@@ -656,7 +692,7 @@ PyObject *pyzoo_aset_acl(PyObject *self, PyObject *args)
 			&pyacl, &completion_callback))
     return NULL;
   CHECK_ZHANDLE(zkhid);
-
+  CHECK_ACLS(pyacl);
   parse_acls( &aclv, pyacl );
   int err = zoo_aset_acl( zhandles[zkhid],
 			  path,
@@ -716,6 +752,7 @@ static PyObject *pyzoo_create(PyObject *self, PyObject *args)
     return NULL;
   CHECK_ZHANDLE(zkhid);
   struct ACL_vector aclv;
+  CHECK_ACLS(acl);
   parse_acls(&aclv,acl);
   zhandle_t *zh = zhandles[zkhid];
   int err = zoo_create(zh, path, values, valuelen, &aclv, flags, realbuf, maxbuf_len);
@@ -774,8 +811,6 @@ static PyObject *pyzoo_exists(PyObject *self, PyObject *args)
 
 static PyObject *pyzoo_get_children(PyObject *self, PyObject *args)
 {
-  // TO DO: Does Python copy the string or the reference? If it's the former
-  // we should free the String_vector
   int zkhid;
   char *path;
   PyObject *watcherfn = Py_None;
@@ -796,13 +831,8 @@ static PyObject *pyzoo_get_children(PyObject *self, PyObject *args)
       return NULL;
     }
 
-  PyObject *ret = PyList_New(strings.count);
-  int i;
-  for (i=0;i<strings.count;++i) 
-    {
-      PyObject *s = PyString_FromString(strings.data[i]);
-      PyList_SetItem(ret, i, s);
-    }
+  PyObject *ret = build_string_vector(&strings);
+  deallocate_String_vector(&strings);
   return ret;
 }
 
@@ -848,33 +878,49 @@ static PyObject *pyzoo_set2(PyObject *self, PyObject *args)
   return build_stat(stat);
 }
 
+// As per ZK documentation, datanodes are limited
+// to 1Mb. Why not do a stat followed by a get, to 
+// determine how big the buffer should be? Because the znode
+// may get updated between calls, so we can't guarantee a 
+// complete get anyhow. 
+#define GET_BUFFER_SIZE 1024*1024
+
+// pyzoo_get has an extra parameter over the java/C equivalents.
+// If you set the fourth integer parameter buffer_len, we return 
+// min(buffer_len, datalength) bytes. This is set by default to 
+// GET_BUFFER_SIZE
 static PyObject *pyzoo_get(PyObject *self, PyObject *args)
 {
   int zkhid;
   char *path;
-  char buffer[512];
-  memset(buffer,0,sizeof(char)*512);
-  int buffer_len=512;
+  char *buffer; 
+  int buffer_len=GET_BUFFER_SIZE;
   struct Stat stat;
   PyObject *watcherfn = Py_None;
   pywatcher_t *pw = NULL;
-  if (!PyArg_ParseTuple(args, "is|O", &zkhid, &path, &watcherfn))
+  if (!PyArg_ParseTuple(args, "is|Oi", &zkhid, &path, &watcherfn, &buffer_len))
     return NULL;
   CHECK_ZHANDLE(zkhid);
-  if (watcherfn != Py_None)
-    pw = create_pywatcher( zkhid, watcherfn,0 );
+  if (watcherfn != Py_None) 
+		{
+			pw = create_pywatcher( zkhid, watcherfn,0 );
+		}
+	buffer = malloc(sizeof(char)*buffer_len);
   int err = zoo_wget(zhandles[zkhid], path, 
 		     watcherfn != Py_None ? watcher_dispatch : NULL, 
 		     pw, buffer, 
 		     &buffer_len, &stat);
+	
   PyObject *stat_dict = build_stat( &stat );
+
   if (err != ZOK)
-    {
+		{
       PyErr_SetString(err_to_exception(err), zerror(err));
       return NULL;
     }
-
-  return Py_BuildValue( "(s#,N)", buffer,buffer_len, stat_dict );
+	PyObject *ret = Py_BuildValue( "(s#,N)", buffer,buffer_len, stat_dict );
+	free(buffer);
+  return ret;
 }
 
 PyObject *pyzoo_get_acl(PyObject *self, PyObject *args)

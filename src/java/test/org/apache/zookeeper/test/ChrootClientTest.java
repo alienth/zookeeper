@@ -23,6 +23,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.junit.Before;
+import org.junit.Test;
 
 public class ChrootClientTest extends ClientTest {
     private static final Logger LOG = Logger.getLogger(ChrootClientTest.class);
@@ -33,6 +34,7 @@ public class ChrootClientTest extends ClientTest {
         String hp = hostPort;
         hostPort = hostPort + "/chrootclienttest";
 
+        System.out.println(hostPort);
         super.setUp();
 
         LOG.info("STARTING " + getName());
@@ -44,5 +46,10 @@ public class ChrootClientTest extends ClientTest {
         } finally {
             zk.close();
         }
+    }
+    
+    @Test
+    public void testPing() throws Exception {
+        // not necessary to repeat this, expensive and not chroot related
     }
 }

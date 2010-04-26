@@ -18,12 +18,15 @@ package org.apache.bookkeeper.util;
  * limitations under the License.
  */
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 
-import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.client.LedgerHandle;
-import org.apache.bookkeeper.client.LedgerSequence;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -36,18 +39,16 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.server.NIOServerCnxn;
-import org.apache.zookeeper.server.ServerStats;
 import org.apache.zookeeper.server.ZooKeeperServer;
 
-import org.apache.log4j.Logger;
-
 public class LocalBookKeeper {
-    Logger LOG = Logger.getLogger(LocalBookKeeper.class);
+    protected static final Logger LOG = Logger.getLogger(LocalBookKeeper.class);
+    public static final int CONNECTION_TIMEOUT = 30000;
+    
 	ConsoleAppender ca;
 	int numberOfBookies;
 	
 	public LocalBookKeeper() {
-		LOG = Logger.getRootLogger();
 		ca = new ConsoleAppender(new PatternLayout());
 		LOG.addAppender(ca);
 		LOG.setLevel(Level.INFO);
@@ -87,14 +88,14 @@ public class LocalBookKeeper {
 		    
 		try {
 			zks = new ZooKeeperServer(ZkTmpDir, ZkTmpDir, ZooKeeperDefaultPort);
-			serverFactory =  new NIOServerCnxn.Factory(ZooKeeperDefaultPort);
+			serverFactory =  new NIOServerCnxn.Factory(new InetSocketAddress(ZooKeeperDefaultPort));
 			serverFactory.startup(zks);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			LOG.fatal("Exception while instantiating ZooKeeper", e);
 		} 
-		
-        boolean b = ClientBase.waitForServerUp(HOSTPORT, ClientBase.CONNECTION_TIMEOUT);
+
+        boolean b = waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT);
         LOG.debug("ZooKeeper server up: " + b);
 	}
 	
@@ -105,11 +106,8 @@ public class LocalBookKeeper {
 			zkc = new ZooKeeper("127.0.0.1", ZooKeeperDefaultPort, new emptyWatcher());
 			zkc.create("/ledgers", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
 			zkc.create("/ledgers/available", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-			// create an entry for each requested bookie
-			for(int i = 0; i < numberOfBookies; i++){
-				zkc.create("/ledgers/available/127.0.0.1:" + 
-					Integer.toString(initialPort + i), new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-			}
+            // No need to create an entry for each requested bookie anymore as the 
+            // BookieServers will register themselves with ZooKeeper on startup.
 		} catch (KeeperException e) {
 			// TODO Auto-generated catch block
 			LOG.fatal("Exception while creating znodes", e);
@@ -133,7 +131,8 @@ public class LocalBookKeeper {
 			tmpDirs[i].delete();
 			tmpDirs[i].mkdir();
 			
-			bs[i] = new BookieServer(initialPort + i, tmpDirs[i], new File[]{tmpDirs[i]});
+			bs[i] = new BookieServer(initialPort + i, InetAddress.getLocalHost().getHostAddress() + ":"
+                    + ZooKeeperDefaultPort, tmpDirs[i], new File[]{tmpDirs[i]});
 			bs[i].start();
 		}		
 	}
@@ -160,5 +159,50 @@ public class LocalBookKeeper {
 	class emptyWatcher implements Watcher{
 		public void process(WatchedEvent event) {}
 	}
+	
+	public static boolean waitForServerUp(String hp, long timeout) {
+        long start = System.currentTimeMillis();
+        String split[] = hp.split(":");
+        String host = split[0];
+        int port = Integer.parseInt(split[1]);
+        while (true) {
+            try {
+                Socket sock = new Socket(host, port);
+                BufferedReader reader = null;
+                try {
+                    OutputStream outstream = sock.getOutputStream();
+                    outstream.write("stat".getBytes());
+                    outstream.flush();
 
+                    reader =
+                        new BufferedReader(
+                                new InputStreamReader(sock.getInputStream()));
+                    String line = reader.readLine();
+                    if (line != null && line.startsWith("Zookeeper version:")) {
+                        LOG.info("Server UP");
+                        return true;
+                    }
+                } finally {
+                    sock.close();
+                    if (reader != null) {
+                        reader.close();
+                    }
+                }
+            } catch (IOException e) {
+                // ignore as this is expected
+                LOG.info("server " + hp + " not up " + e);
+            }
+
+            if (System.currentTimeMillis() > start + timeout) {
+                break;
+            }
+            try {
+                Thread.sleep(250);
+            } catch (InterruptedException e) {
+                // ignore
+            }
+        }
+        return false;
+    }
+	
 }

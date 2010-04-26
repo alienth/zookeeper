@@ -21,9 +21,9 @@ package org.apache.zookeeper.test;
 import java.util.EnumSet;
 
 import junit.framework.TestCase;
-import org.junit.Test;
 
 import org.apache.zookeeper.Watcher.Event.EventType;
+import org.junit.Test;
 
 public class EventTypeTest extends TestCase {
     

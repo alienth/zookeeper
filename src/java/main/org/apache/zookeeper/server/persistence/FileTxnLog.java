@@ -47,7 +47,44 @@ import org.apache.zookeeper.txn.TxnHeader;
 /**
  * This class implements the TxnLog interface. It provides api's
  * to access the txnlogs and add entries to it.
- *
+ * <p>
+ * The format of a Transactional log is as follows:
+ * <blockquote><pre>
+ * LogFile:
+ *     FileHeader TxnList ZeroPad
+ * 
+ * FileHeader: {
+ *     magic 4bytes (ZKLG)
+ *     version 4bytes
+ *     dbid 8bytes
+ *   }
+ * 
+ * TxnList:
+ *     Txn || Txn TxnList
+ *     
+ * Txn:
+ *     checksum Txnlen TxnHeader Record 0x42
+ * 
+ * checksum: 8bytes Adler32 is currently used
+ *   calculated across payload -- Txnlen, TxnHeader, Record and 0x42
+ * 
+ * Txnlen:
+ *     len 4bytes
+ * 
+ * TxnHeader: {
+ *     sessionid 8bytes
+ *     cxid 4bytes
+ *     zxid 8bytes
+ *     time 8bytes
+ *     type 4bytes
+ *   }
+ *     
+ * Record:
+ *     See Jute definition file for details on the various record types
+ *      
+ * ZeroPad:
+ *     0 padded to EOF (filled during preallocation stage)
+ * </pre></blockquote> 
  */
 public class FileTxnLog implements TxnLog {
     private static final Logger LOG;
@@ -119,7 +156,7 @@ public class FileTxnLog implements TxnLog {
      * rollover the current log file to a new one.
      * @throws IOException
      */
-    public void rollLog() throws IOException {
+    public synchronized void rollLog() throws IOException {
         if (logStream != null) {
             this.logStream.flush();
             this.logStream = null;
@@ -128,12 +165,27 @@ public class FileTxnLog implements TxnLog {
     }
 
     /**
+     * close all the open file handles
+     * @throws IOException
+     */
+    public synchronized void close() throws IOException {
+        if (logStream != null) {
+            logStream.close();
+        }
+        for (FileOutputStream log : streamsToFlush) {
+            log.close();
+        }
+    }
+    
+    /**
      * append an entry to the transaction log
      * @param hdr the header of the transaction
      * @param txn the transaction part of the entry
+     * returns true iff something appended, otw false 
      */
-    public synchronized void append(TxnHeader hdr, Record txn)
-        throws IOException {
+    public synchronized boolean append(TxnHeader hdr, Record txn)
+        throws IOException
+    {
         if (hdr != null) {
             if (hdr.getZxid() <= lastZxidSeen) {
                 LOG.warn("Current zxid " + hdr.getZxid()
@@ -161,7 +213,10 @@ public class FileTxnLog implements TxnLog {
             crc.update(buf, 0, buf.length);
             oa.writeLong(crc.getValue(), "txnEntryCRC");
             Util.writeTxnBytes(oa, buf);
+            
+            return true;
         }
+        return false;
     }
 
     /**
@@ -447,7 +502,8 @@ public class FileTxnLog implements TxnLog {
             FileHeader header= new FileHeader();
             header.deserialize(ia, "fileheader");
             if (header.getMagic() != FileTxnLog.TXNLOG_MAGIC) {
-                throw new IOException("Invalid magic number " + header.getMagic()
+                throw new IOException("Transaction log: " + this.logFile + " has invalid magic number " 
+                        + header.getMagic()
                         + " != " + FileTxnLog.TXNLOG_MAGIC);
             }
         }
@@ -464,7 +520,7 @@ public class FileTxnLog implements TxnLog {
                 LOG.debug("Created new input stream " + logFile);
                 ia  = BinaryInputArchive.getArchive(inputStream);
                 inStreamCreated(ia,inputStream);
-                LOG.debug("created new input archive " + logFile);
+                LOG.debug("Created new input archive " + logFile);
             }
             return ia;
         }

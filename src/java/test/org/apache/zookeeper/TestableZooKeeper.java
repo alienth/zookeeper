@@ -19,6 +19,7 @@
 package org.apache.zookeeper;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 
@@ -68,5 +69,19 @@ public class TestableZooKeeper extends ZooKeeper {
                 }
             }
         }.start();
+    }
+    
+    public boolean testableWaitForShutdown(int wait)
+        throws InterruptedException
+    {
+        return super.testableWaitForShutdown(wait);
+    }
+
+    public SocketAddress testableLocalSocketAddress() {
+        return super.testableLocalSocketAddress();
+    }
+
+    public SocketAddress testableRemoteSocketAddress() {
+        return super.testableRemoteSocketAddress();
     }
 }

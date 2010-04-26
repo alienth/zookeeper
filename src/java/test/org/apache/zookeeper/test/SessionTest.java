@@ -22,6 +22,7 @@ import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +32,7 @@ import junit.framework.TestCase;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -45,13 +47,16 @@ import org.junit.Test;
 public class SessionTest extends TestCase implements Watcher {
     protected static final Logger LOG = Logger.getLogger(SessionTest.class);
 
-    private static final String HOSTPORT = "127.0.0.1:33299";
+    private static final String HOSTPORT = "127.0.0.1:" +
+            PortAssignment.unique();
     private NIOServerCnxn.Factory serverFactory;
-    
+
     private CountDownLatch startSignal;
 
     File tmpDir;
     
+    private final int TICK_TIME = 3000;
+
     @Override
     protected void setUp() throws Exception {
         LOG.info("STARTING " + getName());
@@ -61,10 +66,10 @@ public class SessionTest extends TestCase implements Watcher {
         }
 
         ClientBase.setupTestEnv();
-        ZooKeeperServer zs = new ZooKeeperServer(tmpDir, tmpDir, 3000);
-        
+        ZooKeeperServer zs = new ZooKeeperServer(tmpDir, tmpDir, TICK_TIME);
+
         final int PORT = Integer.parseInt(HOSTPORT.split(":")[1]);
-        serverFactory = new NIOServerCnxn.Factory(PORT);
+        serverFactory = new NIOServerCnxn.Factory(new InetSocketAddress(PORT));
         serverFactory.startup(zs);
 
         assertTrue("waiting for server up",
@@ -96,6 +101,13 @@ public class SessionTest extends TestCase implements Watcher {
     {
         CountdownWatcher watcher = new CountdownWatcher();
         return createClient(CONNECTION_TIMEOUT, watcher);
+    }
+
+    private DisconnectableZooKeeper createClient(int timeout)
+        throws IOException, InterruptedException
+    {
+        CountdownWatcher watcher = new CountdownWatcher();
+        return createClient(timeout, watcher);
     }
 
     private DisconnectableZooKeeper createClient(int timeout,
@@ -188,30 +200,59 @@ public class SessionTest extends TestCase implements Watcher {
      * Make sure ephemerals get cleaned up when a session times out.
      */
     public void testSessionTimeout() throws Exception {
-        int oldTimeout = CONNECTION_TIMEOUT;
-        CONNECTION_TIMEOUT = 5000;
-        try {
-            DisconnectableZooKeeper zk = createClient();
-            zk.create("/stest", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-            zk.disconnect();
-            Thread.sleep(CONNECTION_TIMEOUT*2);
-            zk = createClient();
-            System.err.println("This test fails");
-            zk.create("/stest", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-            tearDown();
-            zk.close();
-            zk.disconnect();
-            setUp();
-            zk = createClient();
-            assertTrue(zk.exists("/stest", false) != null);
-            Thread.sleep(CONNECTION_TIMEOUT * 2);
-            assertTrue(zk.exists("/stest", false) == null);
-            zk.close();
-        } finally {
-            CONNECTION_TIMEOUT = oldTimeout;
-        }
+        final int TIMEOUT = 5000;
+        DisconnectableZooKeeper zk = createClient(TIMEOUT);
+        zk.create("/stest", new byte[0], Ids.OPEN_ACL_UNSAFE,
+                CreateMode.EPHEMERAL);
+        zk.disconnect();
+
+        Thread.sleep(TIMEOUT*2);
+
+        zk = createClient(TIMEOUT);
+        zk.create("/stest", new byte[0], Ids.OPEN_ACL_UNSAFE,
+                CreateMode.EPHEMERAL);
+        tearDown();
+        zk.close();
+        zk.disconnect();
+        setUp();
+
+        zk = createClient(TIMEOUT);
+        assertTrue(zk.exists("/stest", false) != null);
+        Thread.sleep(TIMEOUT*2);
+        assertTrue(zk.exists("/stest", false) == null);
+        zk.close();
     }
-    
+
+    /**
+     * Make sure that we cannot have two connections with the same
+     * session id.
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     * @throws KeeperException
+     */
+    @Test
+    public void testSessionMove() throws IOException, InterruptedException, KeeperException {
+        String hostPorts[] = HOSTPORT.split(",");
+        ZooKeeper zk = new DisconnectableZooKeeper(hostPorts[0], CONNECTION_TIMEOUT, this);
+        zk.create("/sessionMoveTest", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+        // we want to loop through the list twice
+        for(int i = 0; i < hostPorts.length*2; i++) {
+            // This should stomp the zk handle
+            ZooKeeper zknew = new DisconnectableZooKeeper(hostPorts[(i+1)%hostPorts.length], CONNECTION_TIMEOUT, this,
+                    zk.getSessionId(),
+                    zk.getSessionPasswd());
+            zknew.setData("/", new byte[1], -1);
+            try {
+                zk.setData("/", new byte[1], -1);
+                fail("Should have lost the connection");
+            } catch(KeeperException.ConnectionLossException e) {
+            }
+            //zk.close();
+            zk = zknew;
+        }
+        zk.close();
+    }
     @Test
     /**
      * This test makes sure that duplicate state changes are not communicated
@@ -244,7 +285,35 @@ public class SessionTest extends TestCase implements Watcher {
 
         zk.close();
     }
-    
+
+    @Test
+    /**
+     * Verify access to the negotiated session timeout.
+     */
+    public void testSessionTimeoutAccess() throws Exception {
+        // validate typical case - requested == negotiated
+        DisconnectableZooKeeper zk = createClient(TICK_TIME * 4);
+        assertEquals(TICK_TIME * 4, zk.getSessionTimeout());
+        // make sure tostring works in both cases
+        LOG.info(zk.toString());
+        zk.close();
+        LOG.info(zk.toString());
+
+        // validate lower limit
+        zk = createClient(TICK_TIME);
+        assertEquals(TICK_TIME * 2, zk.getSessionTimeout());
+        LOG.info(zk.toString());
+        zk.close();
+        LOG.info(zk.toString());
+
+        // validate upper limit
+        zk = createClient(TICK_TIME * 30);
+        assertEquals(TICK_TIME * 20, zk.getSessionTimeout());
+        LOG.info(zk.toString());
+        zk.close();
+        LOG.info(zk.toString());
+    }
+
     private class DupWatcher extends CountdownWatcher {
         public LinkedList<WatchedEvent> states = new LinkedList<WatchedEvent>();
         public void process(WatchedEvent event) {
@@ -258,10 +327,42 @@ public class SessionTest extends TestCase implements Watcher {
     public void process(WatchedEvent event) {
         LOG.info("Event:" + event.getState() + " " + event.getType() + " " + event.getPath());
         if (event.getState() == KeeperState.SyncConnected
-                && startSignal.getCount() > 0)
+                && startSignal != null && startSignal.getCount() > 0)
         {
             startSignal.countDown();
         }
     }
 
+    @Test
+    public void testMinMaxSessionTimeout() throws Exception {
+        // override the defaults
+        final int MINSESS = 20000;
+        final int MAXSESS = 240000;
+        ZooKeeperServer zs = serverFactory.getZooKeeperServer();
+        zs.setMinSessionTimeout(MINSESS);
+        zs.setMaxSessionTimeout(MAXSESS);
+
+        // validate typical case - requested == negotiated
+        int timeout = 120000;
+        DisconnectableZooKeeper zk = createClient(timeout);
+        assertEquals(timeout, zk.getSessionTimeout());
+        // make sure tostring works in both cases
+        LOG.info(zk.toString());
+        zk.close();
+        LOG.info(zk.toString());
+
+        // validate lower limit
+        zk = createClient(MINSESS/2);
+        assertEquals(MINSESS, zk.getSessionTimeout());
+        LOG.info(zk.toString());
+        zk.close();
+        LOG.info(zk.toString());
+
+        // validate upper limit
+        zk = createClient(MAXSESS * 2);
+        assertEquals(MAXSESS, zk.getSessionTimeout());
+        LOG.info(zk.toString());
+        zk.close();
+        LOG.info(zk.toString());
+    }
 }

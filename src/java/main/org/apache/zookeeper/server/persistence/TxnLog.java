@@ -39,9 +39,10 @@ public interface TxnLog {
      * Append a request to the transaction log
      * @param hdr the transaction header
      * @param r the transaction itself
+     * returns true iff something appended, otw false 
      * @throws IOException
      */
-    void append(TxnHeader hdr, Record r) throws IOException;
+    boolean append(TxnHeader hdr, Record r) throws IOException;
 
     /**
      * Start reading the transaction logs
@@ -82,6 +83,10 @@ public interface TxnLog {
      */
     void commit() throws IOException;
    
+    /** 
+     * close the transactions logs
+     */
+    void close() throws IOException;
     /**
      * an iterating interface for reading 
      * transaction logs. 

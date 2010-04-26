@@ -27,7 +27,6 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.server.quorum.QuorumPeer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,7 +41,7 @@ public class QuorumZxidSyncTest extends TestCase {
     @Before
     @Override
     protected void setUp() throws Exception {
-        qb.setUp();
+    	qb.setUp();
     }
     
     @Test
@@ -61,7 +60,7 @@ public class QuorumZxidSyncTest extends TestCase {
         qb.shutdownServers();
         qb.startServers();
         ClientBase.waitForServerUp(qb.hostPort, 10000);
-        qb.tearDown();
+        qb.shutdownServers();
         qb.startServers();
         ClientBase.waitForServerUp(qb.hostPort, 10000);
         zk = new ZooKeeper(qb.hostPort, 10000, new Watcher() {
@@ -85,7 +84,7 @@ public class QuorumZxidSyncTest extends TestCase {
         deleteFiles(qb.s2dir);
         deleteFiles(qb.s3dir);
         deleteFiles(qb.s4dir);
-        qb.setUpServers();
+        qb.setupServers();
         qb.s1.start();
         qb.s2.start();
         qb.s3.start();
@@ -97,7 +96,6 @@ public class QuorumZxidSyncTest extends TestCase {
                 ClientBase.waitForServerUp(hostPort, 10000));
     }
     
-
     private void deleteFiles(File f) {
         File v = new File(f, "version-2");
         for(File c: v.listFiles()) {
@@ -119,10 +117,10 @@ public class QuorumZxidSyncTest extends TestCase {
             }});
         zk.create("/0", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         zk.close();
-        qb.tearDown();
+        qb.shutdownServers();
         qb.startServers();
         ClientBase.waitForServerUp(qb.hostPort, 10000);
-        qb.tearDown();
+        qb.shutdownServers();
         qb.startServers();
         ClientBase.waitForServerUp(qb.hostPort, 10000);
         zk = new ZooKeeper(qb.hostPort, 10000, new Watcher() {
@@ -130,10 +128,10 @@ public class QuorumZxidSyncTest extends TestCase {
             }});
         zk.create("/1", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         zk.close();
-        qb.tearDown();
+        qb.shutdownServers();
         qb.startServers();
         ClientBase.waitForServerUp(qb.hostPort, 10000);
-        qb.tearDown();
+        qb.shutdownServers();
         deleteLogs(qb.s1dir);
         deleteLogs(qb.s2dir);
         deleteLogs(qb.s3dir);
@@ -146,7 +144,7 @@ public class QuorumZxidSyncTest extends TestCase {
             }});
         zk.create("/2", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         zk.close();
-        qb.tearDown();
+        qb.shutdownServers();
         qb.startServers();
         ClientBase.waitForServerUp(qb.hostPort, 10000);
         zk = new ZooKeeper(qb.hostPort, 10000, new Watcher() {

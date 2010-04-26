@@ -20,7 +20,6 @@ package org.apache.zookeeper.server.quorum;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.StringBuffer;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -42,6 +41,7 @@ import org.apache.log4j.Logger;
 import org.apache.zookeeper.server.FinalRequestProcessor;
 import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.RequestProcessor;
+import org.apache.zookeeper.server.quorum.QuorumPeer.LearnerType;
 
 /**
  * This class has the control logic for the Leader.
@@ -67,53 +67,59 @@ public class Leader {
         }
     }
 
-    LeaderZooKeeperServer zk;
+    final LeaderZooKeeperServer zk;
 
-    QuorumPeer self;
+    final QuorumPeer self;
 
     // the follower acceptor thread
-    FollowerCnxAcceptor cnxAcceptor;
+    LearnerCnxAcceptor cnxAcceptor;
     
     // list of all the followers
-    public HashSet<FollowerHandler> followers = new HashSet<FollowerHandler>();
+    public final HashSet<LearnerHandler> learners =
+        new HashSet<LearnerHandler>();
 
-    // list of followers that are ready to follow (i.e synced with the leader)
-    public HashSet<FollowerHandler> forwardingFollowers = new HashSet<FollowerHandler>();
+    // list of followers that are ready to follow (i.e synced with the leader)    
+    public final HashSet<LearnerHandler> forwardingFollowers =
+        new HashSet<LearnerHandler>();
     
+    protected final HashSet<LearnerHandler> observingLearners =
+        new HashSet<LearnerHandler>();
+        
     //Pending sync requests
-    public HashMap<Long,List<FollowerSyncRequest>> pendingSyncs = new HashMap<Long,List<FollowerSyncRequest>>();
+    public final HashMap<Long,List<LearnerSyncRequest>> pendingSyncs =
+        new HashMap<Long,List<LearnerSyncRequest>>();
     
     //Follower counter
-    AtomicLong followerCounter = new AtomicLong(-1);
+    final AtomicLong followerCounter = new AtomicLong(-1);
     /**
-     * Adds follower to the leader.
+     * Adds peer to the leader.
      * 
-     * @param follower
-     *                instance of follower handle
+     * @param learner
+     *                instance of learner handle
      */
-    void addFollowerHandler(FollowerHandler follower) {
-        synchronized (followers) {
-            followers.add(follower);
+    void addLearnerHandler(LearnerHandler learner) {
+        synchronized (learners) {
+            learners.add(learner);
         }
     }
 
     /**
-     * Remove the follower from the followers list
+     * Remove the learner from the learner list
      * 
-     * @param follower
+     * @param peer
      */
-    void removeFollowerHandler(FollowerHandler follower) {
+    void removeLearnerHandler(LearnerHandler peer) {
         synchronized (forwardingFollowers) {
-            forwardingFollowers.remove(follower);
-        }
-        synchronized (followers) {
-            followers.remove(follower);
+            forwardingFollowers.remove(peer);            
+        }        
+        synchronized (learners) {
+            learners.remove(peer);
         }
     }
 
-    boolean isFollowerSynced(FollowerHandler follower){
+    boolean isLearnerSynced(LearnerHandler peer){
         synchronized (forwardingFollowers) {
-            return forwardingFollowers.contains(follower);
+            return forwardingFollowers.contains(peer);
         }        
     }
     
@@ -145,6 +151,11 @@ public class Leader {
      * This is for follower to download the snapshots
      */
     final static int SNAP = 15;
+    
+    /**
+     * This tells the leader that the connecting peer is actually an observer
+     */
+    final static int OBSERVERINFO = 16;
     
     /**
      * This message type is sent by the leader to indicate it's zxid and if
@@ -202,6 +213,11 @@ public class Leader {
      * between the leader and the follower.
      */
     final static int SYNC = 7;
+        
+    /**
+     * This message type informs observers of a committed proposal.
+     */
+    final static int INFORM = 8;
     
     private ConcurrentMap<Long, Proposal> outstandingProposals = new ConcurrentHashMap<Long, Proposal>();
 
@@ -209,7 +225,7 @@ public class Leader {
 
     Proposal newLeaderProposal = new Proposal();
     
-    class FollowerCnxAcceptor extends Thread{
+    class LearnerCnxAcceptor extends Thread{
         private volatile boolean stop = false;
         
         @Override
@@ -217,10 +233,10 @@ public class Leader {
             try {
                 while (!stop) {
                     try{
-                        Socket s = ss.accept();
+                        Socket s = ss.accept();                        
                         s.setSoTimeout(self.tickTime * self.syncLimit);
                         s.setTcpNoDelay(nodelay);
-                        FollowerHandler fh = new FollowerHandler(s, Leader.this);
+                        LearnerHandler fh = new LearnerHandler(s, Leader.this);
                         fh.start();
                     } catch (SocketException e) {
                         if (stop) {
@@ -262,14 +278,16 @@ public class Leader {
             long epoch = self.getLastLoggedZxid() >> 32L;
             epoch++;
             zk.setZxid(epoch << 32L);
-            zk.dataTree.lastProcessedZxid = zk.getZxid();
+            zk.getZKDatabase().setlastProcessedZxid(zk.getZxid());
             
             synchronized(this){
                 lastProposed = zk.getZxid();
             }
-            
+                        
             newLeaderProposal.packet = new QuorumPacket(NEWLEADER, zk.getZxid(),
                     null, null);
+
+
             if ((newLeaderProposal.packet.getZxid() & 0xffffffffL) != 0) {
                 LOG.info("NEWLEADER proposal has Zxid of "
                         + Long.toHexString(newLeaderProposal.packet.getZxid()));
@@ -278,7 +296,7 @@ public class Leader {
             
             // Start thread that waits for connection requests from 
             // new followers.
-            cnxAcceptor = new FollowerCnxAcceptor();
+            cnxAcceptor = new LearnerCnxAcceptor();
             cnxAcceptor.start();
             
             // We have to get at least a majority of servers in sync with
@@ -290,13 +308,13 @@ public class Leader {
                 if (self.tick > self.initLimit) {
                     // Followers aren't syncing fast enough,
                     // renounce leadership!
-                    StringBuffer ackToString = new StringBuffer();
+                    StringBuilder ackToString = new StringBuilder();
                     for(Long id : newLeaderProposal.ackSet)
                         ackToString.append(id + ": ");
                     
                     shutdown("Waiting for a quorum of followers, only synced with: " + ackToString);
                     HashSet<Long> followerSet = new HashSet<Long>();
-                    for(FollowerHandler f : followers)
+                    for(LearnerHandler f : learners)
                         followerSet.add(f.getSid());
                     
                     if (self.getQuorumVerifier().containsQuorum(followerSet)) {
@@ -333,8 +351,8 @@ public class Leader {
                 
                 // lock on the followers when we use it.
                 syncedSet.add(self.getId());
-                synchronized (followers) {
-                    for (FollowerHandler f : followers) {
+                synchronized (learners) {
+                    for (LearnerHandler f : learners) {
                         if (f.synced()) {
                             syncedCount++;
                             syncedSet.add(f.getSid());
@@ -345,8 +363,9 @@ public class Leader {
               if (!tickSkip && !self.getQuorumVerifier().containsQuorum(syncedSet)) {
                 //if (!tickSkip && syncedCount < self.quorumPeers.size() / 2) {
                     // Lost quorum, shutdown
+                  // TODO: message is wrong unless majority quorums used
                     shutdown("Only " + syncedCount + " followers, need "
-                            + (self.quorumPeers.size() / 2));
+                            + (self.getVotingView().size() / 2));
                     // make sure the order is the same!
                     // the leader goes to looking
                     return;
@@ -361,7 +380,7 @@ public class Leader {
     boolean isShutdown;
 
     /**
-     * Close down all the FollowerHandlers
+     * Close down all the LearnerHandlers
      */
     void shutdown(String reason) {
         if (isShutdown) {
@@ -377,21 +396,21 @@ public class Leader {
         
         // NIO should not accept conenctions
         self.cnxnFactory.setZooKeeperServer(null);
+        try {
+            ss.close();
+        } catch (IOException e) {
+            LOG.warn("Ignoring unexpected exception during close",e);
+        }
         // clear all the connections
         self.cnxnFactory.clear();
         // shutdown the previous zk
         if (zk != null) {
             zk.shutdown();
         }
-        try {
-            ss.close();
-        } catch (IOException e) {
-            LOG.warn("Ignoring unexpected exception during close",e);
-        }
-        synchronized (followers) {
-            for (Iterator<FollowerHandler> it = followers.iterator(); it
+        synchronized (learners) {
+            for (Iterator<LearnerHandler> it = learners.iterator(); it
                     .hasNext();) {
-                FollowerHandler f = it.next();
+                LearnerHandler f = it.next();
                 it.remove();
                 f.shutdown();
             }
@@ -464,9 +483,10 @@ public class Leader {
                     LOG.warn("Going to commmit null: " + p);
                 }
                 commit(zxid);
+                inform(p);
                 zk.commitProcessor.commit(p.request);
                 if(pendingSyncs.containsKey(zxid)){
-                    for(FollowerSyncRequest r: pendingSyncs.remove(zxid)) {
+                    for(LearnerSyncRequest r: pendingSyncs.remove(zxid)) {
                         sendSync(r);
                     }
                 }
@@ -538,7 +558,18 @@ public class Leader {
      */
     void sendPacket(QuorumPacket qp) {
         synchronized (forwardingFollowers) {
-            for (FollowerHandler f : forwardingFollowers) {
+            for (LearnerHandler f : forwardingFollowers) {                
+                f.queuePacket(qp);
+            }
+        }
+    }
+    
+    /**
+     * send a packet to all observers     
+     */
+    void sendObserverPacket(QuorumPacket qp) {        
+        synchronized(observingLearners) {
+            for (LearnerHandler f : observingLearners) {                
                 f.queuePacket(qp);
             }
         }
@@ -558,6 +589,17 @@ public class Leader {
         QuorumPacket qp = new QuorumPacket(Leader.COMMIT, zxid, null, null);
         sendPacket(qp);
     }
+    
+    /**
+     * Create an inform packet and send it to all observers.
+     * @param zxid
+     * @param proposal
+     */
+    public void inform(Proposal proposal) {   
+        QuorumPacket qp = new QuorumPacket(Leader.INFORM, proposal.request.zxid, 
+                                            proposal.packet.getData(), null);
+        sendObserverPacket(qp);
+    }
 
     long lastProposed;
 
@@ -568,7 +610,6 @@ public class Leader {
      * @return the proposal that is queued to send to all the members
      */
     public Proposal propose(Request request) {
-        
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         BinaryOutputArchive boa = BinaryOutputArchive.getArchive(baos);
         try {
@@ -604,13 +645,13 @@ public class Leader {
      * @param r the request
      */
     
-    synchronized public void processSync(FollowerSyncRequest r){
+    synchronized public void processSync(LearnerSyncRequest r){
         if(outstandingProposals.isEmpty()){
             sendSync(r);
         } else {
-            List<FollowerSyncRequest> l = pendingSyncs.get(lastProposed);
+            List<LearnerSyncRequest> l = pendingSyncs.get(lastProposed);
             if (l == null) {
-                l = new ArrayList<FollowerSyncRequest>();
+                l = new ArrayList<LearnerSyncRequest>();
             }
             l.add(r);
             pendingSyncs.put(lastProposed, l);
@@ -624,7 +665,7 @@ public class Leader {
      * @param r
      */
             
-    public void sendSync(FollowerSyncRequest r){
+    public void sendSync(LearnerSyncRequest r){
         QuorumPacket qp = new QuorumPacket(Leader.SYNC, 0, null, null);
         r.fh.queuePacket(qp);
     }
@@ -636,7 +677,7 @@ public class Leader {
      * @param handler handler of the follower
      * @return last proposed zxid
      */
-    synchronized public long startForwarding(FollowerHandler handler,
+    synchronized public long startForwarding(LearnerHandler handler,
             long lastSeenZxid) {
         // Queue up any outstanding requests enabling the receipt of
         // new requests
@@ -661,10 +702,16 @@ public class Leader {
                 handler.queuePacket(outstandingProposals.get(zxid).packet);
             }
         }
-        synchronized (forwardingFollowers) {
-            forwardingFollowers.add(handler);
+        if (handler.getLearnerType() == LearnerType.PARTICIPANT) {
+            synchronized (forwardingFollowers) {
+                forwardingFollowers.add(handler);
+            }
+        } else {
+            synchronized (observingLearners) {
+                observingLearners.add(handler);
+            }
         }
-        
+                
         return lastProposed;
     }
 

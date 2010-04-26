@@ -99,9 +99,11 @@ static watcher_object_list_t* create_watcher_object_list(watcher_object_t* head)
 
 static void destroy_watcher_object_list(watcher_object_list_t* list)
 {
+    watcher_object_t* e = NULL;
+
     if(list==0)
         return;
-    watcher_object_t* e=list->head;
+    e=list->head;
     while(e!=0){
         watcher_object_t* this=e;
         e=e->next;
@@ -266,7 +268,9 @@ static void add_for_event(zk_hashtable *ht, char *path, watcher_object_list_t **
 static void do_foreach_watcher(watcher_object_t* wo,zhandle_t* zh,
         const char* path,int type,int state)
 {
-    char *client_path = sub_string(zh, path);
+    // session event's don't have paths
+    const char *client_path =
+        (type != ZOO_SESSION_EVENT ? sub_string(zh, path) : path);
     while(wo!=0){
         wo->watcher(zh,type,state,client_path,wo->context);
         wo=wo->next;

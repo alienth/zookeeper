@@ -28,6 +28,7 @@ import java.util.Random;
 import junit.framework.TestCase;
 
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.server.quorum.FastLeaderElection;
 import org.apache.zookeeper.server.quorum.QuorumPeer;
 import org.apache.zookeeper.server.quorum.Vote;
@@ -47,7 +48,6 @@ public class FLEZeroWeightTest extends TestCase {
     ArrayList<LEThread> threads;
     File tmpdir[];
     int port[];
-    int baseport, baseLEport;
     Object finalObj;
 
     volatile Vote votes[];
@@ -59,8 +59,6 @@ public class FLEZeroWeightTest extends TestCase {
     @Before
     @Override
     protected void setUp() throws Exception {
-        this.baseport = 10111;
-        this.baseLEport = 20111;
         count = 9;
 
         peers = new HashMap<Long,QuorumServer>(count);
@@ -93,11 +91,10 @@ public class FLEZeroWeightTest extends TestCase {
     protected void tearDown() throws Exception {
         for(int i = 0; i < threads.size(); i++) {
             LEThread leThread = threads.get(i);
-            ((FastLeaderElection) leThread.peer.getElectionAlg()).shutdown();
             // shutdown() has to be explicitly called for every thread to
             // make sure that resources are freed properly and all fixed network ports
             // are available for other test cases
-            leThread.peer.shutdown();
+            QuorumBase.shutdown(leThread.peer);
         }
         LOG.info("FINISHED " + getName());
     }
@@ -158,10 +155,10 @@ public class FLEZeroWeightTest extends TestCase {
         for(int i = 0; i < count; i++) {
             peers.put(Long.valueOf(i),
                     new QuorumServer(i,
-                            new InetSocketAddress(baseport +i ),
-                    new InetSocketAddress(baseLEport + i)));
+                            new InetSocketAddress(PortAssignment.unique()),
+                    new InetSocketAddress(PortAssignment.unique())));
             tmpdir[i] = ClientBase.createTmpDir();
-            port[i] = baseport + i;
+            port[i] = PortAssignment.unique();
         }
 
         for(int i = 0; i < le.length; i++) {

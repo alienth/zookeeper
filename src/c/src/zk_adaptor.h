@@ -92,7 +92,11 @@ struct sync_completion {
             struct ACL_vector acl;
             struct Stat stat;
         } acl;
-        struct String_vector strs;
+        struct String_vector strs2;
+        struct {
+            struct String_vector strs2;
+            struct Stat stat2;
+        } strs_stat;
     } u;
     int complete;
 #ifdef THREADED
@@ -170,7 +174,7 @@ typedef struct _auth_list_head {
 struct _zhandle {
     int fd; /* the descriptor used to talk to zookeeper */
     char *hostname; /* the hostname of zookeeper */
-    struct sockaddr *addrs; /* the addresses that correspond to the hostname */
+    struct sockaddr_storage *addrs; /* the addresses that correspond to the hostname */
     int addrs_count; /* The number of addresses in the addrs array */
     watcher_fn watcher; /* the registered watcher */
     struct timeval last_recv; /* The time that the last message was received */
@@ -225,7 +229,7 @@ int process_async(int outstanding_sync);
 void process_completions(zhandle_t *zh);
 int flush_send_queue(zhandle_t*zh, int timeout);
 char* sub_string(zhandle_t *zh, const char* server_path);
-void free_duplicate_path(char* free_path, const char* path);
+void free_duplicate_path(const char* free_path, const char* path);
 void zoo_lock_auth(zhandle_t *zh);
 void zoo_unlock_auth(zhandle_t *zh);
 

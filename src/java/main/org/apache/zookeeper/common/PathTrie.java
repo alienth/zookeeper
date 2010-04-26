@@ -48,11 +48,11 @@ public class PathTrie {
     /**
      * the root node of PathTrie
      */
-    private TrieNode rootNode ;
+    private final TrieNode rootNode ;
     
     static class TrieNode {
         boolean property = false;
-        HashMap<String, TrieNode> children;
+        final HashMap<String, TrieNode> children;
         TrieNode parent = null;
         /**
          * create a trienode with parent
@@ -169,7 +169,7 @@ public class PathTrie {
          * for this node
          */
         public String toString() {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             sb.append("Children of trienode: ");
             synchronized(children) {
                 for (String str: children.keySet()) {
@@ -259,7 +259,7 @@ public class PathTrie {
         }
         int i = 1;
         String part = null;
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         int lastindex = -1;
         while((i < pathComponents.length)) {
             if (parent.getChild(pathComponents[i]) != null) {

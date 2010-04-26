@@ -21,6 +21,7 @@
 
 #include "ZKMocks.h"
 #include "CollectionUtil.h"
+#include "Util.h"
 
 class Zookeeper_watchers : public CPPUNIT_NS::TestFixture
 {
@@ -36,12 +37,26 @@ class Zookeeper_watchers : public CPPUNIT_NS::TestFixture
 
     static void watcher(zhandle_t *, int, int, const char *,void*){}
     zhandle_t *zh;
+    FILE *logfile;
     
 public:
 
+    Zookeeper_watchers() {
+      logfile = openlogfile("Zookeeper_watchers");
+    }
+
+    ~Zookeeper_watchers() {
+      if (logfile) {
+        fflush(logfile);
+        fclose(logfile);
+        logfile = 0;
+      }
+    }
+
     void setUp()
     {
-        zoo_set_debug_level((ZooLogLevel)0); // disable logging
+        zoo_set_log_stream(logfile);
+
         zoo_deterministic_conn_order(0);
         zh=0;
     }
@@ -255,7 +270,9 @@ public:
         CPPUNIT_ASSERT_EQUAL((int)ZOK,rc);
         
         // this will process the response and activate the watcher
-        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK);
+        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK) {
+          millisleep(100);
+        }
         CPPUNIT_ASSERT_EQUAL((int)ZNOTHING,rc);
 
         // disconnect now
@@ -303,14 +320,18 @@ public:
         CPPUNIT_ASSERT_EQUAL((int)ZOK,rc);
         
         // this will process the response and activate the watcher
-        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK);
+        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK) {
+          millisleep(100);
+        }
         CPPUNIT_ASSERT_EQUAL((int)ZNOTHING,rc);
 
         // we are all set now; let's trigger the watches
         zkServer.addRecvResponse(new ZNodeEvent(ZOO_CHANGED_EVENT,"/a/b/c"));
         zkServer.addRecvResponse(new ZNodeEvent(ZOO_CHANGED_EVENT,"/x/y/z"));
         // make sure all watchers have been processed
-        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK);
+        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK) {
+          millisleep(100);
+        }
         CPPUNIT_ASSERT_EQUAL((int)ZNOTHING,rc);
         
         CPPUNIT_ASSERT_EQUAL(1,wobject1.counter_);
@@ -351,13 +372,17 @@ public:
         CPPUNIT_ASSERT_EQUAL((int)ZOK,rc);
         
         // this will process the response and activate the watcher
-        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK);
+        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK) {
+          millisleep(100);
+        }
         CPPUNIT_ASSERT_EQUAL((int)ZNOTHING,rc);
 
         // we are all set now; let's trigger the watches
         zkServer.addRecvResponse(new ZNodeEvent(ZOO_DELETED_EVENT,"/a"));
         // make sure the watchers have been processed
-        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK);
+        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK) {
+          millisleep(100);
+        }
         CPPUNIT_ASSERT_EQUAL((int)ZNOTHING,rc);
 
         CPPUNIT_ASSERT_EQUAL(1,wobject1.counter_);
@@ -397,13 +422,17 @@ public:
         CPPUNIT_ASSERT_EQUAL((int)ZOK,rc);
         
         // this will process the response and activate the watcher
-        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK);
+        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK) {
+          millisleep(100);
+        }
         CPPUNIT_ASSERT_EQUAL((int)ZNOTHING,rc);
 
         // we are all set now; let's trigger the watches
         zkServer.addRecvResponse(new ZNodeEvent(ZOO_CHILD_EVENT,"/a"));
         // make sure the watchers have been processed
-        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK);
+        while((rc=zookeeper_process(zh,ZOOKEEPER_READ))==ZOK) {
+          millisleep(100);
+        }
         CPPUNIT_ASSERT_EQUAL((int)ZNOTHING,rc);
 
         CPPUNIT_ASSERT_EQUAL(0,wobject1.counter_);

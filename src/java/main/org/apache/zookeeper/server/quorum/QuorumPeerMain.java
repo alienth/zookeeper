@@ -25,6 +25,7 @@ import javax.management.JMException;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.jmx.ManagedUtil;
 import org.apache.zookeeper.server.NIOServerCnxn;
+import org.apache.zookeeper.server.ZKDatabase;
 import org.apache.zookeeper.server.ZooKeeperServerMain;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
@@ -62,7 +63,7 @@ public class QuorumPeerMain {
 
     private static final String USAGE = "Usage: QuorumPeerMain configfile";
 
-    private QuorumPeer quorumPeer;
+    protected QuorumPeer quorumPeer;
 
     /**
      * To start the replicated server specify the configuration file name on
@@ -118,10 +119,11 @@ public class QuorumPeerMain {
       LOG.info("Starting quorum peer");
       try {
           NIOServerCnxn.Factory cnxnFactory =
-              new NIOServerCnxn.Factory(config.getClientPort(), config.getMaxClientCnxns());
+              new NIOServerCnxn.Factory(config.getClientPortAddress(),
+                      config.getMaxClientCnxns());
   
           quorumPeer = new QuorumPeer();
-          quorumPeer.setClientPort(config.getClientPort());
+          quorumPeer.setClientPortAddress(config.getClientPortAddress());
           quorumPeer.setTxnFactory(new FileTxnSnapLog(
                       new File(config.getDataLogDir()),
                       new File(config.getDataDir())));
@@ -129,10 +131,14 @@ public class QuorumPeerMain {
           quorumPeer.setElectionType(config.getElectionAlg());
           quorumPeer.setMyid(config.getServerId());
           quorumPeer.setTickTime(config.getTickTime());
+          quorumPeer.setMinSessionTimeout(config.getMinSessionTimeout());
+          quorumPeer.setMaxSessionTimeout(config.getMaxSessionTimeout());
           quorumPeer.setInitLimit(config.getInitLimit());
           quorumPeer.setSyncLimit(config.getSyncLimit());
           quorumPeer.setQuorumVerifier(config.getQuorumVerifier());
           quorumPeer.setCnxnFactory(cnxnFactory);
+          quorumPeer.setZKDatabase(new ZKDatabase(quorumPeer.getTxnFactory()));
+          quorumPeer.setPeerType(config.getPeerType());
   
           quorumPeer.start();
           quorumPeer.join();
@@ -140,9 +146,5 @@ public class QuorumPeerMain {
           // warn, but generally this is ok
           LOG.warn("Quorum Peer interrupted", e);
       }
-    }
-
-    protected void shutdown() {
-        quorumPeer.shutdown();
     }
 }

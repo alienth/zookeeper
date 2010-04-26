@@ -69,13 +69,13 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
             LOG.info("zookeeper.skipACL==\"yes\", ACL checks will be skipped");
         }
     }
-    
+
     /**
      * this is only for testing purposes.
      * should never be useed otherwise
      */
     private static  boolean failCreate = false;
-    
+
     LinkedBlockingQueue<Request> submittedRequests = new LinkedBlockingQueue<Request>();
 
     RequestProcessor nextProcessor;
@@ -88,7 +88,7 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
         this.nextProcessor = nextProcessor;
         this.zks = zks;
     }
-    
+
     /**
      * method for tests to set failCreate
      * @param b
@@ -132,21 +132,22 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
             }
             */
             if (lastChange == null) {
-                DataNode n = zks.dataTree.getNode(path);
+                DataNode n = zks.getZKDatabase().getNode(path);
                 if (n != null) {
                     Long acl;
                     Set<String> children;
                     synchronized(n) {
                         acl = n.acl;
-                        children = n.children;
+                        children = n.getChildren();
                     }
-                    lastChange = new ChangeRecord(-1, path, n.stat, children
-                            .size(), zks.dataTree.convertLong(acl));
+                    lastChange = new ChangeRecord(-1, path, n.stat,
+                        children != null ? children.size() : 0,
+                            zks.getZKDatabase().convertLong(acl));
                 }
             }
         }
         if (lastChange == null || lastChange.stat == null) {
-            throw new KeeperException.NoNodeException();
+            throw new KeeperException.NoNodeException(path);
         }
         return lastChange;
     }
@@ -215,12 +216,12 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                 String path = createRequest.getPath();
                 int lastSlash = path.lastIndexOf('/');
                 if (lastSlash == -1 || path.indexOf('\0') != -1 || failCreate) {
-                    LOG.warn("Invalid path " + path + " with session " +
+                    LOG.info("Invalid path " + path + " with session 0x" +
                             Long.toHexString(request.sessionId));
-                    throw new KeeperException.BadArgumentsException();
+                    throw new KeeperException.BadArgumentsException(path);
                 }
                 if (!fixupACL(request.authInfo, createRequest.getAcl())) {
-                    throw new KeeperException.InvalidACLException();
+                    throw new KeeperException.InvalidACLException(path);
                 }
                 String parentPath = path.substring(0, lastSlash);
                 ChangeRecord parentRecord = getRecordForPath(parentPath);
@@ -236,20 +237,20 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                 try {
                     PathUtils.validatePath(path);
                 } catch(IllegalArgumentException ie) {
-                    LOG.warn("Invalid path " + path + " with session " +
+                    LOG.info("Invalid path " + path + " with session 0x" +
                             Long.toHexString(request.sessionId));
-                    throw new KeeperException.BadArgumentsException();
+                    throw new KeeperException.BadArgumentsException(path);
                 }
                 try {
                     if (getRecordForPath(path) != null) {
-                        throw new KeeperException.NodeExistsException();
+                        throw new KeeperException.NodeExistsException(path);
                     }
                 } catch (KeeperException.NoNodeException e) {
                     // ignore this one
                 }
                 boolean ephemeralParent = parentRecord.stat.getEphemeralOwner() != 0;
                 if (ephemeralParent) {
-                    throw new KeeperException.NoChildrenForEphemeralsException();
+                    throw new KeeperException.NoChildrenForEphemeralsException(path);
                 }
                 txn = new CreateTxn(path, createRequest.getData(),
                         createRequest.getAcl(),
@@ -277,8 +278,8 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                 path = deleteRequest.getPath();
                 lastSlash = path.lastIndexOf('/');
                 if (lastSlash == -1 || path.indexOf('\0') != -1
-                        || zks.dataTree.isSpecialPath(path)) {
-                    throw new KeeperException.BadArgumentsException();
+                        || zks.getZKDatabase().isSpecialPath(path)) {
+                    throw new KeeperException.BadArgumentsException(path);
                 }
                 parentPath = path.substring(0, lastSlash);
                 parentRecord = getRecordForPath(parentPath);
@@ -287,10 +288,10 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                         request.authInfo);
                 int version = deleteRequest.getVersion();
                 if (version != -1 && nodeRecord.stat.getVersion() != version) {
-                    throw new KeeperException.BadVersionException();
+                    throw new KeeperException.BadVersionException(path);
                 }
                 if (nodeRecord.childCount > 0) {
-                    throw new KeeperException.NotEmptyException();
+                    throw new KeeperException.NotEmptyException(path);
                 }
                 txn = new DeleteTxn(path);
                 parentRecord = parentRecord.duplicate(txnHeader.getZxid());
@@ -315,7 +316,7 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                 version = setDataRequest.getVersion();
                 int currentVersion = nodeRecord.stat.getVersion();
                 if (version != -1 && version != currentVersion) {
-                    throw new KeeperException.BadVersionException();
+                    throw new KeeperException.BadVersionException(path);
                 }
                 version = currentVersion + 1;
                 txn = new SetDataTxn(path, setDataRequest.getData(), version);
@@ -330,17 +331,17 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                 SetACLRequest setAclRequest = new SetACLRequest();
                 ZooKeeperServer.byteBuffer2Record(request.request,
                         setAclRequest);
-                if (!fixupACL(request.authInfo, setAclRequest.getAcl())) {
-                    throw new KeeperException.InvalidACLException();
-                }
                 path = setAclRequest.getPath();
+                if (!fixupACL(request.authInfo, setAclRequest.getAcl())) {
+                    throw new KeeperException.InvalidACLException(path);
+                }
                 nodeRecord = getRecordForPath(path);
                 checkACL(zks, nodeRecord.acl, ZooDefs.Perms.ADMIN,
                         request.authInfo);
                 version = setAclRequest.getVersion();
                 currentVersion = nodeRecord.stat.getAversion();
                 if (version != -1 && version != currentVersion) {
-                    throw new KeeperException.BadVersionException();
+                    throw new KeeperException.BadVersionException(path);
                 }
                 version = currentVersion + 1;
                 txn = new SetACLTxn(path, setAclRequest.getAcl(), version);
@@ -365,7 +366,7 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                 // queues up this operation without being the session owner.
                 // this request is the last of the session so it should be ok
                 //zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
-                HashSet<String> es = zks.dataTree
+                HashSet<String> es = zks.getZKDatabase()
                         .getEphemerals(request.sessionId);
                 synchronized (zks.outstandingChanges) {
                     for (ChangeRecord c : zks.outstandingChanges) {
@@ -381,7 +382,7 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                                 path2Delete, null, 0, null));
                     }
                 }
-                LOG.info("Processed session termination request for id: 0x"
+                LOG.info("Processed session termination for sessionid: 0x"
                         + Long.toHexString(request.sessionId));
                 break;
             case OpCode.sync:
@@ -389,9 +390,11 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
             case OpCode.getData:
             case OpCode.getACL:
             case OpCode.getChildren:
+            case OpCode.getChildren2:
             case OpCode.ping:
             case OpCode.setWatches:
-            	zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
+                zks.sessionTracker.checkSession(request.sessionId,
+                        request.getOwner());
                 break;
             }
         } catch (KeeperException e) {
@@ -399,14 +402,17 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                 txnHeader.setType(OpCode.error);
                 txn = new ErrorTxn(e.code().intValue());
             }
-            LOG.warn("Got exception when processing " + request.toString(), e);
+            LOG.info("Got user-level KeeperException when processing "
+                    + request.toString()
+                    + " Error Path:" + e.getPath()
+                    + " Error:" + e.getMessage());
             request.setException(e);
         } catch (Exception e) {
             // log at error level as we are returning a marshalling
             // error to the user
             LOG.error("Failed to process " + request, e);
-            
-            StringBuffer sb = new StringBuffer();
+
+            StringBuilder sb = new StringBuilder();
             ByteBuffer bb = request.request;
             if(bb != null){
                 bb.rewind();
@@ -416,7 +422,7 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
             } else {
                 sb.append("request buffer is null");
             }
-            
+
             LOG.error("Dumping request buffer: 0x" + sb.toString());
             if (txnHeader != null) {
                 txnHeader.setType(OpCode.error);

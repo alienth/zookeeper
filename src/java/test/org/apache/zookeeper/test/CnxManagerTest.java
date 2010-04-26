@@ -19,23 +19,18 @@
 package org.apache.zookeeper.test;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import junit.framework.TestCase;
 
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.server.quorum.FastLeaderElection;
+import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.server.quorum.QuorumCnxManager;
-import org.apache.zookeeper.server.quorum.QuorumCnxManager.Message;
 import org.apache.zookeeper.server.quorum.QuorumPeer;
-import org.apache.zookeeper.server.quorum.Vote;
+import org.apache.zookeeper.server.quorum.QuorumCnxManager.Message;
 import org.apache.zookeeper.server.quorum.QuorumPeer.QuorumServer;
 import org.apache.zookeeper.server.quorum.QuorumPeer.ServerState;
 import org.junit.Test;
@@ -56,28 +51,26 @@ public class CnxManagerTest extends TestCase {
     protected static final Logger LOG = Logger.getLogger(FLENewEpochTest.class);
     protected static final int THRESHOLD = 4;
     
-    int baseport;
-    int baseLEport;
     int count;
     HashMap<Long,QuorumServer> peers;
     File tmpdir[];
     int port[];
     
     public void setUp() throws Exception {
-        this.baseport= 33003;
-        this.baseLEport = 43003;
+        
         this.count = 3;
         this.peers = new HashMap<Long,QuorumServer>(count); 
         tmpdir = new File[count];
         port = new int[count];
         
         for(int i = 0; i < count; i++) {
+            int clientport = PortAssignment.unique();
             peers.put(Long.valueOf(i),
                     new QuorumServer(i,
-                            new InetSocketAddress(baseport + i),
-                    new InetSocketAddress(baseLEport + i)));
+                            new InetSocketAddress(clientport),
+                    new InetSocketAddress(PortAssignment.unique())));
             tmpdir[i] = ClientBase.createTmpDir();
-            port[i] = baseport + i;
+            port[i] = clientport;
         }
     }
     

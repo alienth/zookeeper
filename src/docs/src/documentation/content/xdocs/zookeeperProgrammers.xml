@@ -175,8 +175,8 @@
         <para>In distributed application engineering, the word
         <emphasis>node</emphasis> can refer to a generic host machine, a
         server, a member of an ensemble, a client process, etc. In the ZooKeeper
-        documentatin, <emphasis>znodes</emphasis> refer to the data nodes.
-        <emphasis>Servers</emphasis> to refer to machines that make up the
+        documentation, <emphasis>znodes</emphasis> refer to the data nodes.
+        <emphasis>Servers</emphasis>  refer to machines that make up the
         ZooKeeper service; <emphasis>quorum peers</emphasis> refer to the
         servers that make up an ensemble; client refers to any host or process
         which uses a ZooKeeper service.</para>
@@ -232,7 +232,7 @@
         <title>Sequence Nodes -- Unique Naming</title>
 
         <para>When creating a znode you can also request that
-        ZooKeeper append a monotonicly increasing counter to the end
+        ZooKeeper append a monotonically increasing counter to the end
         of path. This counter is unique to the parent znode. The
         counter has a format of %010d -- that is 10 digits with 0
         (zero) padding (the counter is formatted in this way to
@@ -435,7 +435,61 @@
     responds with the timeout that it can give the client. The current
     implementation requires that the timeout be a minimum of 2 times
     the tickTime (as set in the server configuration) and a maximum of
-    20 times the tickTime.</para>
+    20 times the tickTime. The ZooKeeper client API allows access to
+    the negotiated timeout.</para>
+
+    <para>When a client (session) becomes partitioned from the ZK
+    serving cluster it will begin searching the list of servers that
+    were specified during session creation. Eventually, when
+    connectivity between the client and at least one of the servers is
+    re-established, the session will either again transition to the
+    "connected" state (if reconnected within the session timeout
+    value) or it will transition to the "expired" state (if
+    reconnected after the session timeout). It is not advisable to
+    create a new session object (a new ZooKeeper.class or zookeeper
+    handle in the c binding) for disconnection. The ZK client library
+    will handle reconnect for you. In particular we have heuristics
+    built into the client library to handle things like "herd effect",
+    etc... Only create a new session when you are notified of session
+    expiration (mandatory).</para>
+
+    <para>Session expiration is managed by the ZooKeeper cluster
+    itself, not by the client. When the ZK client establishes a
+    session with the cluster it provides a "timeout" value detailed
+    above. This value is used by the cluster to determine when the
+    client's session expires. Expirations happens when the cluster
+    does not hear from the client within the specified session timeout
+    period (i.e. no heartbeat). At session expiration the cluster will
+    delete any/all ephemeral nodes owned by that session and
+    immediately notify any/all connected clients of the change (anyone
+    watching those znodes). At this point the client of the expired
+    session is still disconnected from the cluster, it will not be
+    notified of the session expiration until/unless it is able to
+    re-establish a connection to the cluster. The client will stay in
+    disconnected state until the TCP connection is re-established with
+    the cluster, at which point the watcher of the expired session
+    will receive the "session expired" notification.</para>
+
+    <para>Example state transitions for an expired session as seen by
+    the expired session's watcher:</para>
+
+    <orderedlist>
+      <listitem><para>'connected' : session is established and client
+      is communicating with cluster (client/server communication is
+      operating properly)</para></listitem>
+      <listitem><para>.... client is partitioned from the
+      cluster</para></listitem>
+      <listitem><para>'disconnected' : client has lost connectivity
+      with the cluster</para></listitem>
+      <listitem><para>.... time elapses, after 'timeout' period the
+      cluster expires the session, nothing is seen by client as it is
+      disconnected from cluster</para></listitem>
+      <listitem><para>.... time elapses, the client regains network
+      level connectivity with the cluster</para></listitem>
+      <listitem><para>'expired' : eventually the client reconnects to
+      the cluster, it is then notified of the
+      expiration</para></listitem>
+    </orderedlist>
 
     <para>Another parameter to the ZooKeeper session establishment
     call is the default watcher. Watchers are notified when any state
@@ -479,12 +533,13 @@
       which has be reestablished on a different server. The normal cause of this error is
       a client that sends a request to a server, but the network packet gets delayed, so
       the client times out and connects to a new server. When the delayed packet arrives at
-      the first server, the old server detects that the session has moved and sends back
-      the SESSION_MOVED error. Clients normally do not see this error since they do not read
+      the first server, the old server detects that the session has moved, and closes the
+      client connection. Clients normally do not see this error since they do not read
       from those old connections. (Old connections are usually closed.) One situation in which this
-      error can be seen is when two clients try to reestablish the same connection using
+      condition can be seen is when two clients try to reestablish the same connection using
       a saved session id and password. One of the clients will reestablish the connection
-      and the second client will get the SessionMovedException.</para>
+      and the second client will be disconnected (causing the pair to attempt to re-establish
+      it's connection/session indefinitely).</para>
 
   </section>
 
@@ -504,7 +559,7 @@
       <listitem>
         <para><emphasis role="bold">One-time trigger</emphasis></para>
 
-        <para>One watch event will be sent to the client the data has changed.
+        <para>One watch event will be sent to the client when the data has changed.
         For example, if a client does a getData("/znode1", true) and later the
         data for /znode1 is changed or deleted, the client will get a watch
         event for /znode1. If /znode1 changes again, no watch event will be
@@ -1102,7 +1157,7 @@ authProvider.2=com.f.MyAuth2
 
         <variablelist>
           <varlistentry>
-            <term>Simultaneously Conistent Cross-Client Views</term>
+            <term>Simultaneously Consistent Cross-Client Views</term>
 
             <listitem>
               <para>ZooKeeper does not guarantee that at every instance in

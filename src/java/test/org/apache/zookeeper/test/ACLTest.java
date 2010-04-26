@@ -21,6 +21,7 @@ package org.apache.zookeeper.test;
 import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
 
 import java.io.File;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +30,7 @@ import junit.framework.TestCase;
 
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -42,9 +44,9 @@ import org.apache.zookeeper.server.ZooKeeperServer;
 
 public class ACLTest extends TestCase implements Watcher {
     private static final Logger LOG = Logger.getLogger(ACLTest.class);
-    private static String HOSTPORT = "127.0.0.1:2355";
-    ZooKeeperServer zks;
-    private CountDownLatch startSignal;
+    private static final String HOSTPORT =
+        "127.0.0.1:" + PortAssignment.unique();
+    private volatile CountDownLatch startSignal;
 
     @Override
     protected void setUp() throws Exception {
@@ -58,14 +60,15 @@ public class ACLTest extends TestCase implements Watcher {
     public void testDisconnectedAddAuth() throws Exception {
         File tmpDir = ClientBase.createTmpDir();
         ClientBase.setupTestEnv();
-        zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
+        ZooKeeperServer zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
         SyncRequestProcessor.setSnapCount(1000);
         final int PORT = Integer.parseInt(HOSTPORT.split(":")[1]);
-        NIOServerCnxn.Factory f = new NIOServerCnxn.Factory(PORT);
+        NIOServerCnxn.Factory f = new NIOServerCnxn.Factory(
+                new InetSocketAddress(PORT));
         f.startup(zks);
         LOG.info("starting up the zookeeper server .. waiting");
-        assertTrue("waiting for server being up", 
-                ClientBase.waitForServerUp(HOSTPORT,CONNECTION_TIMEOUT));
+        assertTrue("waiting for server being up",
+                ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT));
         ZooKeeper zk = new ZooKeeper(HOSTPORT, CONNECTION_TIMEOUT, this);
         try {
             zk.addAuthInfo("digest", "pat:test".getBytes());
@@ -80,7 +83,7 @@ public class ACLTest extends TestCase implements Watcher {
                    ClientBase.waitForServerDown(HOSTPORT,
                            ClientBase.CONNECTION_TIMEOUT));
     }
-    
+
     /**
      * Verify that acl optimization of storing just
      * a few acls and there references in the data
@@ -89,14 +92,15 @@ public class ACLTest extends TestCase implements Watcher {
     public void testAcls() throws Exception {
         File tmpDir = ClientBase.createTmpDir();
         ClientBase.setupTestEnv();
-        zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
+        ZooKeeperServer zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
         SyncRequestProcessor.setSnapCount(1000);
         final int PORT = Integer.parseInt(HOSTPORT.split(":")[1]);
-        NIOServerCnxn.Factory f = new NIOServerCnxn.Factory(PORT);
+        NIOServerCnxn.Factory f = new NIOServerCnxn.Factory(
+                new InetSocketAddress(PORT));
         f.startup(zks);
         LOG.info("starting up the zookeeper server .. waiting");
         assertTrue("waiting for server being up",
-                ClientBase.waitForServerUp(HOSTPORT,CONNECTION_TIMEOUT));
+                ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT));
         ZooKeeper zk = new ZooKeeper(HOSTPORT, CONNECTION_TIMEOUT, this);
         String path;
         LOG.info("starting creating acls");
@@ -105,7 +109,7 @@ public class ACLTest extends TestCase implements Watcher {
             zk.create(path, path.getBytes(), Ids.OPEN_ACL_UNSAFE,
                     CreateMode.PERSISTENT);
         }
-        assertTrue("size of the acl map ", (1 == zks.dataTree.longKeyMap.size()));
+        assertTrue("size of the acl map ", (1 == zks.getZKDatabase().getAclSize()));
         for (int j = 100; j < 200; j++) {
             path = "/" + j;
             ACL acl = new ACL();
@@ -118,29 +122,27 @@ public class ACLTest extends TestCase implements Watcher {
             list.add(acl);
             zk.create(path, path.getBytes(), list, CreateMode.PERSISTENT);
         }
-        assertTrue("size of the acl map ", (101 == zks.dataTree.longKeyMap.size()));
+        assertTrue("size of the acl map ", (101 == zks.getZKDatabase().getAclSize()));
         // now shutdown the server and restart it
         f.shutdown();
         assertTrue("waiting for server down",
-                ClientBase.waitForServerDown(HOSTPORT,
-                        CONNECTION_TIMEOUT));
+                ClientBase.waitForServerDown(HOSTPORT, CONNECTION_TIMEOUT));
         startSignal = new CountDownLatch(1);
 
         zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
-        f = new NIOServerCnxn.Factory(PORT);
+        f = new NIOServerCnxn.Factory(new InetSocketAddress(PORT));
 
         f.startup(zks);
 
         assertTrue("waiting for server up",
-                   ClientBase.waitForServerUp(HOSTPORT,
-                                       CONNECTION_TIMEOUT));
+                   ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT));
 
         startSignal.await(CONNECTION_TIMEOUT,
                 TimeUnit.MILLISECONDS);
         assertTrue("count == 0", startSignal.getCount() == 0);
 
-        assertTrue("acl map ", (101 == zks.dataTree.longKeyMap.size()));
-        for (int j =200; j < 205; j++) {
+        assertTrue("acl map ", (101 == zks.getZKDatabase().getAclSize()));
+        for (int j = 200; j < 205; j++) {
             path = "/" + j;
             ACL acl = new ACL();
             acl.setPerms(0);
@@ -152,7 +154,9 @@ public class ACLTest extends TestCase implements Watcher {
             list.add(acl);
             zk.create(path, path.getBytes(), list, CreateMode.PERSISTENT);
         }
-        assertTrue("acl map ", (106 == zks.dataTree.longKeyMap.size()));
+        assertTrue("acl map ", (106 == zks.getZKDatabase().getAclSize()));
+
+        zk.close();
 
         f.shutdown();
 
@@ -168,11 +172,15 @@ public class ACLTest extends TestCase implements Watcher {
      * @see org.apache.zookeeper.Watcher#process(org.apache.zookeeper.WatcherEvent)
      */
     public void process(WatchedEvent event) {
-        LOG.info("Event:" + event.getState() + " " + event.getType() + " " + event.getPath());
-        if (event.getState() == KeeperState.SyncConnected
-                && startSignal != null && startSignal.getCount() > 0)
-        {
-            startSignal.countDown();
+        LOG.info("Event:" + event.getState() + " " + event.getType() + " "
+                 + event.getPath());
+        if (event.getState() == KeeperState.SyncConnected) {
+            if (startSignal != null && startSignal.getCount() > 0) {
+                LOG.info("startsignal.countDown()");
+                startSignal.countDown();
+            } else {
+                LOG.warn("startsignal " + startSignal);
+            }
         }
     }
 }

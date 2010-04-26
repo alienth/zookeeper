@@ -28,7 +28,7 @@ import org.apache.zookeeper.server.PrepRequestProcessor;
 import org.apache.zookeeper.server.RequestProcessor;
 import org.apache.zookeeper.server.ServerCnxn;
 import org.apache.zookeeper.server.SessionTrackerImpl;
-import org.apache.zookeeper.server.ZooKeeperServer;
+import org.apache.zookeeper.server.ZKDatabase;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 
 /**
@@ -38,9 +38,7 @@ import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
  * CommitProcessor -> Leader.ToBeAppliedRequestProcessor ->
  * FinalRequestProcessor
  */
-public class LeaderZooKeeperServer extends ZooKeeperServer {
-    private QuorumPeer self;
-
+public class LeaderZooKeeperServer extends QuorumZooKeeperServer {
     CommitProcessor commitProcessor;
 
     /**
@@ -48,10 +46,10 @@ public class LeaderZooKeeperServer extends ZooKeeperServer {
      * @param dataDir
      * @throws IOException
      */
-    LeaderZooKeeperServer(FileTxnSnapLog logFactory,QuorumPeer self,
-            DataTreeBuilder treeBuilder) throws IOException {
-        super(logFactory, self.tickTime,treeBuilder);
-        this.self = self;
+    LeaderZooKeeperServer(FileTxnSnapLog logFactory, QuorumPeer self,
+            DataTreeBuilder treeBuilder, ZKDatabase zkDb) throws IOException {
+        super(logFactory, self.tickTime, self.minSessionTimeout,
+                self.maxSessionTimeout, treeBuilder, zkDb, self);
     }
 
     public Leader getLeader(){
@@ -80,7 +78,7 @@ public class LeaderZooKeeperServer extends ZooKeeperServer {
     
     @Override
     protected void createSessionTracker() {
-        sessionTracker = new SessionTrackerImpl(this, sessionsWithTimeouts,
+        sessionTracker = new SessionTrackerImpl(this, getZKDatabase().getSessionWithTimeOuts(),
                 tickTime, self.getId());
         ((SessionTrackerImpl)sessionTracker).start();
     }
@@ -94,7 +92,7 @@ public class LeaderZooKeeperServer extends ZooKeeperServer {
     protected void registerJMX() {
         // register with JMX
         try {
-            jmxDataTreeBean = new DataTreeBean(dataTree);
+            jmxDataTreeBean = new DataTreeBean(getZKDatabase().getDataTree());
             MBeanRegistry.getInstance().register(jmxDataTreeBean, jmxServerBean);
         } catch (Exception e) {
             LOG.warn("Failed to register with JMX", e);
@@ -154,6 +152,15 @@ public class LeaderZooKeeperServer extends ZooKeeperServer {
         return "leader";
     }
 
+    /**
+     * Returns the id of the associated QuorumPeer, which will do for a unique
+     * id of this server. 
+     */
+    @Override
+    public long getServerId() {
+        return self.getId();
+    }    
+    
     @Override
     protected void revalidateSession(ServerCnxn cnxn, long sessionId,
         int sessionTimeout) throws IOException, InterruptedException {

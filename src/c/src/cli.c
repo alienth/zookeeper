@@ -209,6 +209,14 @@ void my_strings_completion(int rc, const struct String_vector *strings,
       shutdownThisThing=1;
 }
 
+void my_strings_stat_completion(int rc, const struct String_vector *strings,
+        const struct Stat *stat, const void *data) {
+    my_strings_completion(rc, strings, data);
+    dumpStat(stat);
+    if(batchMode)
+      shutdownThisThing=1;
+}
+
 void my_void_completion(int rc, const void *data) {
     fprintf(stderr, "%s: rc = %d\n", (char*)data, rc);
     free((void*)data);
@@ -273,6 +281,7 @@ void processline(char *line) {
       fprintf(stderr, "    set <path> <data>\n");
       fprintf(stderr, "    get <path>\n");
       fprintf(stderr, "    ls <path>\n");
+      fprintf(stderr, "    ls2 <path>\n");
       fprintf(stderr, "    sync <path>\n");
       fprintf(stderr, "    exists <path>\n");
       fprintf(stderr, "    myid\n");
@@ -339,6 +348,17 @@ void processline(char *line) {
         if (rc) {
             fprintf(stderr, "Error %d for %s\n", rc, line);
         }
+    } else if (startsWith(line, "ls2 ")) {
+        line += 4;
+        if (line[0] != '/') {
+            fprintf(stderr, "Path must start with /, found: %s\n", line);
+            return;
+        }
+        gettimeofday(&startTime, 0);
+        rc= zoo_aget_children2(zh, line, 1, my_strings_stat_completion, strdup(line));
+        if (rc) {
+            fprintf(stderr, "Error %d for %s\n", rc, line);
+        }
     } else if (startsWith(line, "create ")) {
         int flags = 0;
         line += 7;
@@ -395,6 +415,9 @@ void processline(char *line) {
             fprintf(stderr, "Error %d for %s\n", rc, line);
         }
     } else if (startsWith(line, "exists ")) {
+#ifdef THREADED
+        struct Stat stat;
+#endif
         line += 7;
         if (line[0] != '/') {
             fprintf(stderr, "Path must start with /, found: %s\n", line);
@@ -403,7 +426,6 @@ void processline(char *line) {
 #ifndef THREADED
         rc = zoo_aexists(zh, line, 1, my_stat_completion, strdup(line));
 #else
-        struct Stat stat;
         rc = zoo_exists(zh, line, 1, &stat);
 #endif
         if (rc) {
@@ -426,8 +448,8 @@ void processline(char *line) {
         if (rc)
             fprintf(stderr, "od command failed: %d\n", rc);
     } else if (startsWith(line, "addauth ")) {
-      line += 8;
       char *ptr;
+      line += 8;
       ptr = strchr(line, ' ');
       if (ptr) {
         *ptr = '\0';
@@ -453,7 +475,7 @@ int main(int argc, char **argv) {
 
     if (argc < 2) {
         fprintf(stderr,
-                "USAGE %s zookeeper_host_list [clientid_file|cmd:(ls|create|od|...)]\n", 
+                "USAGE %s zookeeper_host_list [clientid_file|cmd:(ls|ls2|create|od|...)]\n", 
                 argv[0]);
         fprintf(stderr,
                 "Version: ZooKeeper cli (c client) version %d.%d.%d\n", 

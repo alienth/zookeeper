@@ -56,15 +56,15 @@ public class Request {
         this.authInfo = authInfo;
     }
 
-    public long sessionId;
+    public final long sessionId;
 
-    public int cxid;
+    public final int cxid;
 
-    public int type;
+    public final int type;
 
-    public ByteBuffer request;
+    public final ByteBuffer request;
 
-    public ServerCnxn cnxn;
+    public final ServerCnxn cnxn;
 
     public TxnHeader hdr;
 
@@ -72,14 +72,14 @@ public class Request {
 
     public long zxid = -1;
 
-    public List<Id> authInfo;
+    public final List<Id> authInfo;
 
-    public long createTime = System.currentTimeMillis();
+    public final long createTime = System.currentTimeMillis();
     
     private Object owner;
     
     private KeeperException e;
-    
+
     public Object getOwner() {
         return owner;
     }
@@ -110,6 +110,7 @@ public class Request {
         case OpCode.getACL:
         case OpCode.setACL:
         case OpCode.getChildren:
+        case OpCode.getChildren2:
         case OpCode.ping:
         case OpCode.closeSession:
         case OpCode.setWatches:
@@ -124,6 +125,7 @@ public class Request {
         case OpCode.exists:
         case OpCode.getACL:
         case OpCode.getChildren:
+        case OpCode.getChildren2:
         case OpCode.getData:
             return false;
         case OpCode.error:
@@ -163,6 +165,8 @@ public class Request {
             return "setACL";
         case OpCode.getChildren:
             return "getChildren";
+        case OpCode.getChildren2:
+            return "getChildren2";
         case OpCode.ping:
             return "ping";
         case OpCode.createSession:
@@ -178,32 +182,42 @@ public class Request {
 
     @Override
     public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append("sessionid:0x").append(Long.toHexString(sessionId));
-        sb.append(" type:").append(op2String(type));
-        sb.append(" cxid:0x").append(Long.toHexString(cxid));
-        sb.append(" zxid:0x").append(Long.toHexString((hdr == null ?
-                -2 : hdr.getZxid())));
-        sb.append(" txntype:" + (hdr == null ?
-                "unknown" : "" + hdr.getType()));
-        sb.append(" ");
+        StringBuilder sb = new StringBuilder();
+        sb.append("sessionid:0x").append(Long.toHexString(sessionId))
+            .append(" type:").append(op2String(type))
+            .append(" cxid:0x").append(Long.toHexString(cxid))
+            .append(" zxid:0x").append(Long.toHexString(hdr == null ?
+                    -2 : hdr.getZxid()))
+            .append(" txntype:").append(hdr == null ?
+                    "unknown" : "" + hdr.getType());
 
+        // best effort to print the path assoc with this request
         String path = "n/a";
-        if (type != OpCode.createSession && request != null
+        if (type != OpCode.createSession
+                && type != OpCode.setWatches
+                && type != OpCode.closeSession
+                && request != null
                 && request.remaining() >= 4)
         {
             try {
-                request.clear();
-                int pathLen = request.getInt();
-                byte b[] = new byte[pathLen];
-                request.get(b);
-                path = new String(b);
-                request.clear();
+                // make sure we don't mess with request itself
+                ByteBuffer rbuf = request.asReadOnlyBuffer();
+                rbuf.clear();
+                int pathLen = rbuf.getInt();
+                // sanity check
+                if (pathLen >= 0
+                        && pathLen < 4096
+                        && rbuf.remaining() >= pathLen)
+                {
+                    byte b[] = new byte[pathLen];
+                    rbuf.get(b);
+                    path = new String(b);
+                }
             } catch (Exception e) {
-                LOG.warn("Ignoring exception during toString", e);
+                // ignore - can't find the path, will output "n/a" instead
             }
         }
-        sb.append(path).append(" ");
+        sb.append(" reqpath:").append(path);
 
         return sb.toString();
     }

@@ -19,6 +19,7 @@
 package org.apache.zookeeper;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,6 +29,7 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.AsyncCallback.ACLCallback;
+import org.apache.zookeeper.AsyncCallback.Children2Callback;
 import org.apache.zookeeper.AsyncCallback.ChildrenCallback;
 import org.apache.zookeeper.AsyncCallback.DataCallback;
 import org.apache.zookeeper.AsyncCallback.StatCallback;
@@ -42,6 +44,8 @@ import org.apache.zookeeper.proto.DeleteRequest;
 import org.apache.zookeeper.proto.ExistsRequest;
 import org.apache.zookeeper.proto.GetACLRequest;
 import org.apache.zookeeper.proto.GetACLResponse;
+import org.apache.zookeeper.proto.GetChildren2Request;
+import org.apache.zookeeper.proto.GetChildren2Response;
 import org.apache.zookeeper.proto.GetChildrenRequest;
 import org.apache.zookeeper.proto.GetChildrenResponse;
 import org.apache.zookeeper.proto.GetDataRequest;
@@ -342,7 +346,7 @@ public class ZooKeeper {
      * Added in 3.2.0: An optional "chroot" suffix may also be appended to the
      * connection string. This will run the client commands while interpreting
      * all paths relative to this root (similar to the unix chroot command).
-     * 
+     *
      * @param connectString
      *            comma separated host:port pairs, each corresponding to a zk
      *            server. e.g. "127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002" If
@@ -357,7 +361,7 @@ public class ZooKeeper {
      * @param watcher
      *            a watcher object which will be notified of state changes, may
      *            also be notified for node events
-     * 
+     *
      * @throws IOException
      *             in cases of network failure
      * @throws IllegalArgumentException
@@ -448,7 +452,7 @@ public class ZooKeeper {
      * re-connect.
      *
      * This method is NOT thread safe
-     * 
+     *
      * @return current session id
      */
     public long getSessionId() {
@@ -461,7 +465,7 @@ public class ZooKeeper {
      * change after a re-connect.
      *
      * This method is NOT thread safe
-     * 
+     *
      * @return current session password
      */
     public byte[] getSessionPasswd() {
@@ -469,10 +473,23 @@ public class ZooKeeper {
     }
 
     /**
-     * Add the specified scheme:auth information to this connection.
-     * 
+     * The negotiated session timeout for this ZooKeeper client instance. The
+     * value returned is not valid until the client connects to a server and
+     * may change after a re-connect.
+     *
      * This method is NOT thread safe
-     * 
+     *
+     * @return current session timeout
+     */
+    public int getSessionTimeout() {
+        return cnxn.getSessionTimeout();
+    }
+
+    /**
+     * Add the specified scheme:auth information to this connection.
+     *
+     * This method is NOT thread safe
+     *
      * @param scheme
      * @param auth
      */
@@ -483,7 +500,7 @@ public class ZooKeeper {
     /**
      * Specify the default watcher for the connection (overrides the one
      * specified during construction).
-     * 
+     *
      * @param watcher
      */
     public synchronized void register(Watcher watcher) {
@@ -499,12 +516,23 @@ public class ZooKeeper {
      * @throws InterruptedException
      */
     public synchronized void close() throws InterruptedException {
-        LOG.info("Closing session: 0x" + Long.toHexString(getSessionId()));
+        if (!state.isAlive()) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Close called on already closed client");
+            }
+            return;
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Closing session: 0x" + Long.toHexString(getSessionId()));
+        }
 
         try {
             cnxn.close();
         } catch (IOException e) {
-            LOG.warn("Ignoring unexpected exception", e);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Ignoring unexpected exception during close", e);
+            }
         }
 
         LOG.info("Session: 0x" + Long.toHexString(getSessionId()) + " closed");
@@ -528,7 +556,7 @@ public class ZooKeeper {
             return clientPath;
         }
     }
-    
+
     /**
      * Create a node with the given path. The node data will be the given data,
      * and node acl will be the given acl.
@@ -541,7 +569,8 @@ public class ZooKeeper {
      * <p>
      * The flags argument can also specify to create a sequential node. The
      * actual path name of a sequential node will be the given path plus a
-     * suffix "_i" where i is the current sequential number of the node. Once
+     * suffix "i" where i is the current sequential number of the node. The sequence
+     * number is always fixed length of 10 digits, 0 padded. Once
      * such a node is created, the sequential number will be incremented by one.
      * <p>
      * If a node with the same actual path already exists in the ZooKeeper, a
@@ -579,7 +608,7 @@ public class ZooKeeper {
      *                and/or sequential
      * @return the actual path of the created node
      * @throws KeeperException if the server returns a non-zero error code
-     * @throws KeeperException.InvalidACLException if the ACL is invalid
+     * @throws KeeperException.InvalidACLException if the ACL is invalid, null, or empty
      * @throws InterruptedException if the transaction is interrupted
      * @throws IllegalArgumentException if an invalid path is specified
      */
@@ -675,7 +704,7 @@ public class ZooKeeper {
     {
         final String clientPath = path;
         PathUtils.validatePath(clientPath);
-        
+
         final String serverPath;
 
         // maintain semantics even in chroot case
@@ -1279,7 +1308,140 @@ public class ZooKeeper {
      * @see #getChildren(String, boolean)
      */
     public void getChildren(String path, boolean watch, ChildrenCallback cb,
-            Object ctx) {
+            Object ctx)
+    {
+        getChildren(path, watch ? watchManager.defaultWatcher : null, cb, ctx);
+    }
+
+    /**
+     * For the given znode path return the stat and children list.
+     * <p>
+     * If the watch is non-null and the call is successful (no exception is thrown),
+     * a watch will be left on the node with the given path. The watch willbe
+     * triggered by a successful operation that deletes the node of the given
+     * path or creates/delete a child under the node.
+     * <p>
+     * The list of children returned is not sorted and no guarantee is provided
+     * as to its natural or lexical order.
+     * <p>
+     * A KeeperException with error code KeeperException.NoNode will be thrown
+     * if no node with the given path exists.
+     *
+     * @since 3.3.0
+     * 
+     * @param path
+     * @param watcher explicit watcher
+     * @param stat stat of the znode designated by path
+     * @return an unordered array of children of the node with the given path
+     * @throws InterruptedException If the server transaction is interrupted.
+     * @throws KeeperException If the server signals an error with a non-zero error code.
+     * @throws IllegalArgumentException if an invalid path is specified
+     */
+    public List<String> getChildren(final String path, Watcher watcher,
+            Stat stat)
+        throws KeeperException, InterruptedException
+    {
+        final String clientPath = path;
+        PathUtils.validatePath(clientPath);
+
+        // the watch contains the un-chroot path
+        WatchRegistration wcb = null;
+        if (watcher != null) {
+            wcb = new ChildWatchRegistration(watcher, clientPath);
+        }
+
+        final String serverPath = prependChroot(clientPath);
+
+        RequestHeader h = new RequestHeader();
+        h.setType(ZooDefs.OpCode.getChildren2);
+        GetChildren2Request request = new GetChildren2Request();
+        request.setPath(serverPath);
+        request.setWatch(watcher != null);
+        GetChildren2Response response = new GetChildren2Response();
+        ReplyHeader r = cnxn.submitRequest(h, request, response, wcb);
+        if (r.getErr() != 0) {
+            throw KeeperException.create(KeeperException.Code.get(r.getErr()),
+                    clientPath);
+        }
+        if (stat != null) {
+            DataTree.copyStat(response.getStat(), stat);
+        }
+        return response.getChildren();
+    }
+
+    /**
+     * For the given znode path return the stat and children list.
+     * <p>
+     * If the watch is true and the call is successful (no exception is thrown),
+     * a watch will be left on the node with the given path. The watch willbe
+     * triggered by a successful operation that deletes the node of the given
+     * path or creates/delete a child under the node.
+     * <p>
+     * The list of children returned is not sorted and no guarantee is provided
+     * as to its natural or lexical order.
+     * <p>
+     * A KeeperException with error code KeeperException.NoNode will be thrown
+     * if no node with the given path exists.
+     *
+     * @since 3.3.0
+     * 
+     * @param path
+     * @param watch
+     * @param stat stat of the znode designated by path
+     * @return an unordered array of children of the node with the given path
+     * @throws InterruptedException If the server transaction is interrupted.
+     * @throws KeeperException If the server signals an error with a non-zero
+     *  error code.
+     */
+    public List<String> getChildren(String path, boolean watch, Stat stat)
+            throws KeeperException, InterruptedException {
+        return getChildren(path, watch ? watchManager.defaultWatcher : null,
+                stat);
+    }
+
+    /**
+     * The Asynchronous version of getChildren. The request doesn't actually
+     * until the asynchronous callback is called.
+     *
+     * @since 3.3.0
+     * 
+     * @see #getChildren(String, Watcher, Stat)
+     */
+    public void getChildren(final String path, Watcher watcher,
+            Children2Callback cb, Object ctx)
+    {
+        final String clientPath = path;
+        PathUtils.validatePath(clientPath);
+
+        // the watch contains the un-chroot path
+        WatchRegistration wcb = null;
+        if (watcher != null) {
+            wcb = new ChildWatchRegistration(watcher, clientPath);
+        }
+
+        final String serverPath = prependChroot(clientPath);
+
+        RequestHeader h = new RequestHeader();
+        h.setType(ZooDefs.OpCode.getChildren2);
+        GetChildren2Request request = new GetChildren2Request();
+        request.setPath(serverPath);
+        request.setWatch(watcher != null);
+        GetChildren2Response response = new GetChildren2Response();
+        cnxn.queuePacket(h, new ReplyHeader(), request, response, cb,
+                clientPath, serverPath, ctx, wcb);
+    }
+
+    /**
+     * The Asynchronous version of getChildren. The request doesn't actually
+     * until the asynchronous callback is called.
+     *
+     * @since 3.3.0
+     * 
+     * @see #getChildren(String, boolean, Stat)
+     */
+    public void getChildren(String path, boolean watch, Children2Callback cb,
+            Object ctx)
+    {
         getChildren(path, watch ? watchManager.defaultWatcher : null, cb, ctx);
     }
 
@@ -1307,5 +1469,78 @@ public class ZooKeeper {
 
     public States getState() {
         return state;
+    }
+
+    /**
+     * String representation of this ZooKeeper client. Suitable for things
+     * like logging.
+     * 
+     * Do NOT count on the format of this string, it may change without
+     * warning.
+     * 
+     * @since 3.3.0
+     */
+    @Override
+    public String toString() {
+        States state = getState();
+        return ("State:" + state.toString()
+                + (state == States.CONNECTED ?
+                        " Timeout:" + getSessionTimeout() + " " :
+                        " ")
+                + cnxn);
+    }
+
+    /*
+     * Methods to aid in testing follow.
+     * 
+     * THESE METHODS ARE EXPECTED TO BE USED FOR TESTING ONLY!!!
+     */
+
+    /**
+     * Wait up to wait milliseconds for the underlying threads to shutdown.
+     * THIS METHOD IS EXPECTED TO BE USED FOR TESTING ONLY!!!
+     * 
+     * @since 3.3.0
+     * 
+     * @param wait max wait in milliseconds
+     * @return true iff all threads are shutdown, otw false
+     */
+    protected boolean testableWaitForShutdown(int wait)
+        throws InterruptedException
+    {
+        cnxn.sendThread.join(wait);
+        if (cnxn.sendThread.isAlive()) return false;
+        cnxn.eventThread.join(wait);
+        if (cnxn.eventThread.isAlive()) return false;
+        return true;
+    }
+
+    /**
+     * Returns the address to which the socket is connected. Useful for testing
+     * against an ensemble - test client may need to know which server
+     * to shutdown if interested in verifying that the code handles
+     * disconnection/reconnection correctly.
+     * THIS METHOD IS EXPECTED TO BE USED FOR TESTING ONLY!!!
+     *
+     * @since 3.3.0
+     * 
+     * @return ip address of the remote side of the connection or null if
+     *         not connected
+     */
+    protected SocketAddress testableRemoteSocketAddress() {
+        return cnxn.getRemoteSocketAddress();
+    }
+
+    /** 
+     * Returns the local address to which the socket is bound.
+     * THIS METHOD IS EXPECTED TO BE USED FOR TESTING ONLY!!!
+     *
+     * @since 3.3.0
+     * 
+     * @return ip address of the remote side of the connection or null if
+     *         not connected
+     */
+    protected SocketAddress testableLocalSocketAddress() {
+        return cnxn.getLocalSocketAddress();
     }
 }

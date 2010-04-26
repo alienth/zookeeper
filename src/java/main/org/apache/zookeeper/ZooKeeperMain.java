@@ -68,6 +68,7 @@ public class ZooKeeperMain {
         commandMap.put("set","path data [version]");
         commandMap.put("get","path [watch]");
         commandMap.put("ls","path [watch]");
+        commandMap.put("ls2","path [watch]");
         commandMap.put("getAcl","path");
         commandMap.put("setAcl","path acl");
         commandMap.put("stat","path [watch]");
@@ -126,15 +127,16 @@ public class ZooKeeperMain {
     }
 
     private static void printStat(Stat stat) {
-        System.err.println("cZxid = " + stat.getCzxid());
+        System.err.println("cZxid = 0x" + Long.toHexString(stat.getCzxid()));
         System.err.println("ctime = " + new Date(stat.getCtime()).toString());
-        System.err.println("mZxid = " + stat.getMzxid());
+        System.err.println("mZxid = 0x" + Long.toHexString(stat.getMzxid()));
         System.err.println("mtime = " + new Date(stat.getMtime()).toString());
-        System.err.println("pZxid = " + stat.getPzxid());
+        System.err.println("pZxid = 0x" + Long.toHexString(stat.getPzxid()));
         System.err.println("cversion = " + stat.getCversion());
         System.err.println("dataVersion = " + stat.getVersion());
         System.err.println("aclVersion = " + stat.getAversion());
-        System.err.println("ephemeralOwner = " + stat.getEphemeralOwner());
+        System.err.println("ephemeralOwner = 0x"
+        		+ Long.toHexString(stat.getEphemeralOwner()));
         System.err.println("dataLength = " + stat.getDataLength());
         System.err.println("numChildren = " + stat.getNumChildren());
     }
@@ -533,7 +535,7 @@ public class ZooKeeperMain {
         // now create the direct children
         // and the stat and quota nodes
         String[] splits = path.split("/");
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         sb.append(quotaPath);
         for (int i=1; i<splits.length; i++) {
             sb.append("/" + splits[i]);
@@ -697,6 +699,11 @@ public class ZooKeeperMain {
             path = args[1];
             List<String> children = zk.getChildren(path, watch);
             System.out.println(children);
+        } else if (cmd.equals("ls2") && args.length >= 2) {
+            path = args[1];
+            List<String> children = zk.getChildren(path, watch, stat);
+            System.out.println(children);
+            printStat(stat);
         } else if (cmd.equals("getAcl") && args.length >= 2) {
             path = args[1];
             acl = zk.getACL(path, stat);
@@ -784,7 +791,7 @@ public class ZooKeeperMain {
     }
 
     private static String getPermString(int perms) {
-        StringBuffer p = new StringBuffer();
+        StringBuilder p = new StringBuilder();
         if ((perms & ZooDefs.Perms.CREATE) != 0) {
             p.append('c');
         }

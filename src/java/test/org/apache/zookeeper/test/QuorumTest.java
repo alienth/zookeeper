@@ -17,12 +17,8 @@
  */
 
 package org.apache.zookeeper.test;
-import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-
 import java.io.IOException;
 import java.util.ArrayList;
-
-import junit.framework.TestCase;
 
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.AsyncCallback;
@@ -32,38 +28,37 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;
-import org.apache.zookeeper.server.quorum.FollowerHandler;
-import org.apache.zookeeper.server.quorum.Leader;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.data.Stat;
+import org.apache.zookeeper.server.quorum.Leader;
+import org.apache.zookeeper.server.quorum.LearnerHandler;
 import org.junit.Before;
 import org.junit.Test;
 
-public class QuorumTest extends TestCase {
+public class QuorumTest extends QuorumBase {
     private static final Logger LOG = Logger.getLogger(QuorumTest.class);
     public static final long CONNECTION_TIMEOUT = ClientTest.CONNECTION_TIMEOUT;
-    private QuorumBase qb = new QuorumBase();
+
+    private final QuorumBase qb = new QuorumBase();
     private final ClientTest ct = new ClientTest();
-    
+
     @Before
     @Override
     protected void setUp() throws Exception {
-        qb.setUp();        
+        qb.setUp();
         ct.hostPort = qb.hostPort;
+        ct.setUpAll();
     }
-    
+
     protected void tearDown() throws Exception {
+        ct.tearDownAll();
         qb.tearDown();
     }
     
     @Test
     public void testDeleteWithChildren() throws Exception {
         ct.testDeleteWithChildren();
-    }
-
-    @Test
-    public void testHammerBasic() throws Throwable {
-        ct.testHammerBasic();
     }
 
     @Test
@@ -98,10 +93,24 @@ public class QuorumTest extends TestCase {
     }
     
     @Test
-    public void testMultipleWatcherObjs() throws IOException,
-            InterruptedException, KeeperException
-    {
-        ct.testMutipleWatcherObjs();
+    public void testGetView() {                
+        ct.assertEquals(5,qb.s1.getView().size());        
+        ct.assertEquals(5,qb.s2.getView().size());        
+        ct.assertEquals(5,qb.s3.getView().size());        
+        ct.assertEquals(5,qb.s4.getView().size());
+        ct.assertEquals(5,qb.s5.getView().size());
+    }
+    
+    @Test
+    public void testViewContains() {
+        // Test view contains self
+        ct.assertTrue(qb.s1.viewContains(qb.s1.getId()));
+        
+        // Test view contains other servers
+        ct.assertTrue(qb.s1.viewContains(qb.s2.getId()));
+        
+        // Test view does not contain non-existant servers
+        ct.assertFalse(qb.s1.viewContains(-1L));
     }
     
     volatile int counter = 0;
@@ -130,9 +139,9 @@ public class QuorumTest extends TestCase {
                 }
             }, null);
         }
-        ArrayList<FollowerHandler> fhs = new ArrayList<FollowerHandler>(leader.forwardingFollowers);
-        for(FollowerHandler f: fhs) {
-            f.sock.shutdownInput();
+        ArrayList<LearnerHandler> fhs = new ArrayList<LearnerHandler>(leader.forwardingFollowers);
+        for(LearnerHandler f: fhs) {
+            f.getSocket().shutdownInput();
         }
         for(int i = 0; i < 5000; i++) {
             zk.setData("/blah/blah", new byte[0], -1, new AsyncCallback.StatCallback() {
@@ -153,9 +162,16 @@ public class QuorumTest extends TestCase {
         assertTrue(qb.s5.isAlive());
         zk.close();
     }
-
+    
+    @Test
+    public void testMultipleWatcherObjs() throws IOException,
+            InterruptedException, KeeperException
+    {
+        ct.testMutipleWatcherObjs();
+    }
+	
     /**
-     * Make sure that we can change sessions
+     * Make sure that we can change sessions 
      *  from follower to leader.
      *
      * @throws IOException
@@ -165,14 +181,14 @@ public class QuorumTest extends TestCase {
     @Test
     public void testSessionMoved() throws IOException, InterruptedException, KeeperException {
         String hostPorts[] = qb.hostPort.split(",");
-        ZooKeeper zk = new DisconnectableZooKeeper(hostPorts[0], ClientBase.CONNECTION_TIMEOUT, new Watcher() {
+        DisconnectableZooKeeper zk = new DisconnectableZooKeeper(hostPorts[0], ClientBase.CONNECTION_TIMEOUT, new Watcher() {
             public void process(WatchedEvent event) {
             }});
         zk.create("/sessionMoveTest", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
         // we want to loop through the list twice
         for(int i = 0; i < hostPorts.length*2; i++) {
             // This should stomp the zk handle
-            ZooKeeper zknew = new DisconnectableZooKeeper(hostPorts[(i+1)%hostPorts.length], ClientBase.CONNECTION_TIMEOUT,
+            DisconnectableZooKeeper zknew = new DisconnectableZooKeeper(hostPorts[(i+1)%hostPorts.length], ClientBase.CONNECTION_TIMEOUT, 
                     new Watcher() {public void process(WatchedEvent event) {
                     }},
                     zk.getSessionId(),
@@ -181,14 +197,23 @@ public class QuorumTest extends TestCase {
             try {
                 zk.setData("/", new byte[1], -1);
                 fail("Should have lost the connection");
-            } catch(KeeperException.SessionMovedException e) {
+            } catch(KeeperException.ConnectionLossException e) {
             }
-            //zk.close();
+            zk.disconnect(); // close w/o closing session
             zk = zknew;
         }
         zk.close();
     }
-    
+
+    private static class DiscoWatcher implements Watcher {
+        volatile boolean zkDisco = false;
+        public void process(WatchedEvent event) {
+            if (event.getState() == KeeperState.Disconnected) {
+                zkDisco = true;
+            }
+        }
+    }
+
     @Test
     /**
      * Connect to two different servers with two different handles using the same session and
@@ -196,32 +221,41 @@ public class QuorumTest extends TestCase {
      */
     public void testSessionMove() throws IOException, InterruptedException, KeeperException {
         String hps[] = qb.hostPort.split(",");
-        ZooKeeper zk = new DisconnectableZooKeeper(hps[0], ClientBase.CONNECTION_TIMEOUT, new Watcher() {
-            public void process(WatchedEvent event) {
-        }});
+        DiscoWatcher oldWatcher = new DiscoWatcher();
+        ZooKeeper zk = new DisconnectableZooKeeper(hps[0],
+                ClientBase.CONNECTION_TIMEOUT, oldWatcher);
         zk.create("/t1", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
         // This should stomp the zk handle
-        ZooKeeper zknew = new DisconnectableZooKeeper(hps[1], ClientBase.CONNECTION_TIMEOUT, new Watcher() {
-            public void process(WatchedEvent event) {
-            }}, zk.getSessionId(), zk.getSessionPasswd());
+        DiscoWatcher watcher = new DiscoWatcher();
+        ZooKeeper zknew = new DisconnectableZooKeeper(hps[1],
+                ClientBase.CONNECTION_TIMEOUT, watcher, zk.getSessionId(),
+                zk.getSessionPasswd());
         zknew.create("/t2", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
         try {
             zk.create("/t3", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
             fail("Should have lost the connection");
-        } catch(KeeperException.SessionMovedException e) {
+        } catch(KeeperException.ConnectionLossException e) {
+            // wait up to 30 seconds for the disco to be delivered
+            for (int i = 0; i < 30; i++) {
+                if (oldWatcher.zkDisco) {
+                    break;
+                }
+                Thread.sleep(1000);
+            }
+            assertTrue(oldWatcher.zkDisco);
         }
-        
+
         ArrayList<ZooKeeper> toClose = new ArrayList<ZooKeeper>();
         toClose.add(zknew);
         // Let's just make sure it can still move
         for(int i = 0; i < 10; i++) {
-            zknew = new DisconnectableZooKeeper(hps[1], ClientBase.CONNECTION_TIMEOUT, new Watcher() {
-                public void process(WatchedEvent event) {
-                }}, zk.getSessionId(), zk.getSessionPasswd());
+            zknew = new DisconnectableZooKeeper(hps[1],
+                    ClientBase.CONNECTION_TIMEOUT, new DiscoWatcher(),
+                    zk.getSessionId(), zk.getSessionPasswd());
             toClose.add(zknew);
             zknew.create("/t-"+i, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
         }
-	for(ZooKeeper z: toClose) {
+        for (ZooKeeper z: toClose) {
             z.close();
         }
         zk.close();

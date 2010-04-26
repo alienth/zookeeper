@@ -26,12 +26,15 @@ import java.util.Random;
 
 import junit.framework.TestCase;
 
+import org.apache.log4j.Logger;
+import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.server.quorum.LeaderElection;
 import org.apache.zookeeper.server.quorum.QuorumPeer;
 import org.apache.zookeeper.server.quorum.Vote;
 import org.apache.zookeeper.server.quorum.QuorumPeer.QuorumServer;
 
 public class LETest extends TestCase {
+    private static final Logger LOG = Logger.getLogger(LETest.class);
     volatile Vote votes[];
     volatile boolean leaderDies;
     volatile long leader = -1;
@@ -56,7 +59,7 @@ public class LETest extends TestCase {
                             if (leaderDies) {
                                 leaderDies = false;
                                 peer.stopLeaderElection();
-                                System.out.println("Leader " + i + " dying");
+                                LOG.info("Leader " + i + " dying");
                                 leader = -2;
                             } else {
                                 leader = i;
@@ -76,7 +79,7 @@ public class LETest extends TestCase {
                     Thread.sleep(rand.nextInt(1000));
                     peer.setCurrentVote(new Vote(peer.getId(), 0));
                 }
-                System.out.println("Thread " + i + " votes " + v);
+                LOG.info("Thread " + i + " votes " + v);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -84,22 +87,25 @@ public class LETest extends TestCase {
     }
     public void testLE() throws Exception {
         int count = 30;
-        int baseport= 33003;
         HashMap<Long,QuorumServer> peers = new HashMap<Long,QuorumServer>(count);
         ArrayList<LEThread> threads = new ArrayList<LEThread>(count);
         File tmpdir[] = new File[count];
         int port[] = new int[count];
         votes = new Vote[count];
         for(int i = 0; i < count; i++) {
-            peers.put(Long.valueOf(i), new QuorumServer(i, new InetSocketAddress("127.0.0.1", baseport+100+i)));
+            peers.put(Long.valueOf(i),
+                    new QuorumServer(i,
+                            new InetSocketAddress("127.0.0.1",
+                                    PortAssignment.unique())));
             tmpdir[i] = ClientBase.createTmpDir();
-            port[i] = baseport+i;
+            port[i] = PortAssignment.unique();
         }
         LeaderElection le[] = new LeaderElection[count];
         leaderDies = true;
         boolean allowOneBadLeader = leaderDies;
         for(int i = 0; i < le.length; i++) {
-            QuorumPeer peer = new QuorumPeer(peers, tmpdir[i], tmpdir[i], port[i], 0, i, 2, 2, 2);
+            QuorumPeer peer = new QuorumPeer(peers, tmpdir[i], tmpdir[i],
+                    port[i], 0, i, 2, 2, 2);
             peer.startLeaderElection();
             le[i] = new LeaderElection(peer);
             LEThread thread = new LEThread(le[i], peer, i);
@@ -125,5 +131,5 @@ public class LETest extends TestCase {
                 }
             }
         }
-    }
+    }    
 }
