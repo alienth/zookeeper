@@ -10,7 +10,8 @@ Standards-Version: 3.8.4
 Build-Depends: debhelper (>= 7.4.11), javahelper (>= 0.28), default-jdk (>= 1.6),
  ant (>= 1.6.0), liblog4j1.2-java (>> 1.2.15-8), junit4, libxerces2-java,
  libjline-java, libnetty-java, javacc, default-jdk-doc, python-all-dev, python-support,
- libboost-dev, libxml2-dev, liblog4cxx10-dev, autoconf, help2man, libtool, automake
+ libboost-dev, libxml2-dev, liblog4cxx10-dev, autoconf, help2man, libtool, automake,
+ libcppunit-dev
 XS-Python-Version: all
 
 Package: libzookeeper-java
