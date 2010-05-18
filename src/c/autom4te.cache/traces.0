@@ -3161,13 +3161,17 @@ m4trace:configure.ac:87: -1- m4_pattern_allow([^const$])
 m4trace:configure.ac:89: -1- m4_pattern_allow([^TIME_WITH_SYS_TIME$])
 m4trace:configure.ac:90: -1- m4_pattern_allow([^POLL_NFDS_TYPE$])
 m4trace:configure.ac:90: -1- m4_pattern_allow([^POLL_NFDS_TYPE$])
-m4trace:configure.ac:99: -1- m4_pattern_allow([^LIB@&t@OBJS$])
-m4trace:configure.ac:99: -1- m4_pattern_allow([^LTLIBOBJS$])
-m4trace:configure.ac:99: -1- AM_CONDITIONAL([am__EXEEXT], [test -n "$EXEEXT"])
-m4trace:configure.ac:99: -1- m4_pattern_allow([^am__EXEEXT_TRUE$])
-m4trace:configure.ac:99: -1- m4_pattern_allow([^am__EXEEXT_FALSE$])
-m4trace:configure.ac:99: -1- _AM_SUBST_NOTMAKE([am__EXEEXT_TRUE])
-m4trace:configure.ac:99: -1- _AM_SUBST_NOTMAKE([am__EXEEXT_FALSE])
-m4trace:configure.ac:99: -1- _AC_AM_CONFIG_HEADER_HOOK(["$ac_file"])
-m4trace:configure.ac:99: -1- _AM_OUTPUT_DEPENDENCY_COMMANDS
-m4trace:configure.ac:99: -1- _LT_PROG_LTMAIN
+m4trace:configure.ac:97: -1- _m4_warn([obsolete], [The macro `AC_TRY_RUN' is obsolete.
+You should run autoupdate.], [../../lib/autoconf/general.m4:2751: AC_TRY_RUN is expanded from...
+configure.ac:97: the top level])
+m4trace:configure.ac:116: -1- m4_pattern_allow([^USEIPV6$])
+m4trace:configure.ac:123: -1- m4_pattern_allow([^LIB@&t@OBJS$])
+m4trace:configure.ac:123: -1- m4_pattern_allow([^LTLIBOBJS$])
+m4trace:configure.ac:123: -1- AM_CONDITIONAL([am__EXEEXT], [test -n "$EXEEXT"])
+m4trace:configure.ac:123: -1- m4_pattern_allow([^am__EXEEXT_TRUE$])
+m4trace:configure.ac:123: -1- m4_pattern_allow([^am__EXEEXT_FALSE$])
+m4trace:configure.ac:123: -1- _AM_SUBST_NOTMAKE([am__EXEEXT_TRUE])
+m4trace:configure.ac:123: -1- _AM_SUBST_NOTMAKE([am__EXEEXT_FALSE])
+m4trace:configure.ac:123: -1- _AC_AM_CONFIG_HEADER_HOOK(["$ac_file"])
+m4trace:configure.ac:123: -1- _AM_OUTPUT_DEPENDENCY_COMMANDS
+m4trace:configure.ac:123: -1- _LT_PROG_LTMAIN
