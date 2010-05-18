@@ -1,0 +1,13 @@
+The command used to filter and import the upstream tarball was:
+
+git-import-orig --pristine-tar --filter-pristine-tar --upstream-version=3.3.0+dfsg1 \
+                --filter="*.jar" \
+                --filter="zookeeper-3.3.0/contrib" \
+                --filter="zookeeper-3.3.0/docs" \
+                --filter="zookeeper-3.3.0/recipes" \
+                --filter="zookeeper-3.3.0/src/contrib/rest" \
+                --filter="zookeeper-3.3.0/src/c/generated" \
+                --filter="zookeeper-3.3.0/src/java/main/org/apache/jute/compiler/generated/*.java" \
+                --filter="zookeeper-3.3.0/src/java/generated" \
+                ../zookeeper_3.3.0.orig.tar.gz
+
