@@ -21,7 +21,7 @@ override_dh_auto_build:
 	$(MAKE) -C src/c
 
 	# compile contribs
-	cd src/contrib && ant -Dversion=3.3.0 -Ddest.dir=../../build/zookeeper -Divy.jar.exists=true -Divy.initialized=true -Dcontribfilesetexcludes="zkpython/build.xml"
+	cd src/contrib && ant -Dversion=3.3.1 -Ddest.dir=../../build/zookeeper -Divy.jar.exists=true -Divy.initialized=true -Dcontribfilesetincludes="bookkeeper/build.xml"
 
 	cd src/contrib/zkpython && \
 	  for pv in $(PYVERS); do \
