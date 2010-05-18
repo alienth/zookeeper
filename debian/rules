@@ -84,6 +84,14 @@ override_dh_auto_clean:
 	rm -rf src/contrib/zktreeutil/missing
 	rm -rf src/contrib/zktreeutil/src/Makefile.in
 	rm -rf zktreeutil.man
+	rm -rf src/c/Makefile.in
+	rm -rf src/c/aclocal.m4
+	rm -rf src/c/autom4te.cache
+	rm -rf src/c/compile
+	rm -rf src/c/config.guess
+	rm -rf src/c/config.sub
+	rm -rf src/c/configure
+	rm -rf src/c/ltmain.sh
 
 override_dh_installdocs:
 	dh_installdocs --link-doc=libzookeeper-java \
