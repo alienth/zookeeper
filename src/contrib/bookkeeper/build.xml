@@ -34,7 +34,7 @@
 
   <target name="setjarname">
     <property name="jarname"
-              value="${build.dir}/zookeeper-${version}-${name}.jar"/>
+              value="${build.dir}/zookeeper-${name}.jar"/>
   </target>
 
   <target name="init" depends="checkMainCompiled, zookeeperbuildcontrib.init"/>
