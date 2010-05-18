@@ -3,7 +3,7 @@
 
 AC_PREREQ(2.59)
 
-AC_INIT([zookeeper C client],3.3.0,[zookeeper-user@hadoop.apache.org],[c-client-src])
+AC_INIT([zookeeper C client],3.3.1,[zookeeper-user@hadoop.apache.org],[c-client-src])
 AC_CONFIG_SRCDIR([src/zookeeper.c])
 
 # initialize Doxygen support
@@ -91,6 +91,30 @@ AC_CHECK_TYPE([nfds_t],
     [AC_DEFINE([POLL_NFDS_TYPE],[nfds_t],[poll() second argument type])],
     [AC_DEFINE([POLL_NFDS_TYPE],[unsigned int],[poll() second argument type])],
     [#include <poll.h>])
+
+AC_MSG_CHECKING([whether to enable ipv6])
+
+AC_TRY_RUN([ /* is AF_INET6 available? */
+#include <sys/types.h>
+#include <sys/socket.h>
+main()
+{
+ if (socket(AF_INET6, SOCK_STREAM, 0) < 0)
+   exit(1);
+ else
+   exit(0);
+}
+], AC_MSG_RESULT(yes) 
+   ipv6=yes, 
+   AC_MSG_RESULT(no) 
+   ipv6=no, 
+   AC_MSG_RESULT(no) 
+   ipv6=no)
+
+if test x"$ipv6" = xyes; then
+  USEIPV6="-DZOO_IPV6_ENABLED"
+  AC_SUBST(USEIPV6)
+fi
 
 # Checks for library functions.
 AC_CHECK_FUNCS([getcwd gethostbyname gethostname getlogin getpwuid_r gettimeofday getuid memmove memset poll socket strchr strdup strerror strtol])
