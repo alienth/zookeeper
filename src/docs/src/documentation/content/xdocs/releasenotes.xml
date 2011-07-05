@@ -18,7 +18,7 @@
 <!DOCTYPE article PUBLIC "-//OASIS//DTD Simplified DocBook XML V1.0//EN"
 "http://www.oasis-open.org/docbook/xml/simple/1.0/sdocbook.dtd">
 <article id="ar_ReleaseNotes">
-  <title>ZooKeeper 3.3.1 Release Notes</title>
+  <title>ZooKeeper 3.3.3 Release Notes</title>
 
   <articleinfo>
     <legalnotice>
@@ -47,10 +47,10 @@ from version 2 of ZooKeeper (SourceForge) to version 3 or
 later.</para>
 
 <section id="changes">
-<title>Changes Since ZooKeeper 3.3.0</title>
+<title>Changes Since ZooKeeper 3.3.2</title>
 
 <table>
-<title>Changes Since ZooKeeper 3.3.0</title>
+<title>Changes Since ZooKeeper 3.3.2</title>
 <tgroup cols='2'>
 <colspec colname='c1'/><colspec colname='c2'/>
 <thead>
@@ -61,58 +61,47 @@ later.</para>
 </thead>
 <tbody>
 
-<row>
-  <entry>Bug</entry>
-  <entry></entry>
-</row>
+<row><entry>        Bug
+</entry><entry></entry></row>
 
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-720">ZOOKEEPER-720</ulink></entry><entry>         Use zookeeper-{version}-sources.jar instead of zookeeper-{version}-src.jar to publish sources in the Maven repository
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-880'>ZOOKEEPER-880</ulink>]</entry><entry>        QuorumCnxManager$SendWorker grows without bounds
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-722">ZOOKEEPER-722</ulink></entry><entry>         zkServer.sh uses sh's builtin echo on BSD, behaves incorrectly.
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-882'>ZOOKEEPER-882</ulink>]</entry><entry>        Startup loads last transaction from snapshot
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-734">ZOOKEEPER-734</ulink></entry><entry>         QuorumPeerTestBase.java and ZooKeeperServerMainTest.java do not handle windows path correctly
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-888'>ZOOKEEPER-888</ulink>]</entry><entry>        c-client / zkpython: Double free corruption on node watcher
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-735">ZOOKEEPER-735</ulink></entry><entry>         cppunit test testipv6 assumes that the machine is ipv6 enabled.
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-913'>ZOOKEEPER-913</ulink>]</entry><entry>        Version parser fails to parse &quot;3.3.2-dev&quot; from build.xml.
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-737">ZOOKEEPER-737</ulink></entry><entry>         some 4 letter words may fail with netcat (nc)
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-917'>ZOOKEEPER-917</ulink>]</entry><entry>        Leader election selected incorrect leader
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-738">ZOOKEEPER-738</ulink></entry><entry>         zookeeper.jute.h fails to compile with -pedantic 
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-919'>ZOOKEEPER-919</ulink>]</entry><entry>        Ephemeral nodes remains in one of ensemble after deliberate SIGKILL
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-741">ZOOKEEPER-741</ulink></entry><entry>         root level create on REST proxy fails
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-921'>ZOOKEEPER-921</ulink>]</entry><entry>        zkPython incorrectly checks for existence of required ACL elements
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-742">ZOOKEEPER-742</ulink></entry><entry>         Deallocatng None on writes
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-957'>ZOOKEEPER-957</ulink>]</entry><entry>        zkCleanup.sh doesn&#39;t do anything
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-746">ZOOKEEPER-746</ulink></entry><entry>         learner outputs session id to log in dec (should be hex)
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-962'>ZOOKEEPER-962</ulink>]</entry><entry>        leader/follower coherence issue when follower is receiving a DIFF
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-749">ZOOKEEPER-749</ulink></entry><entry>         OSGi metadata not included in binary only jar
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-963'>ZOOKEEPER-963</ulink>]</entry><entry>        Make Forrest work with JDK6
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-750">ZOOKEEPER-750</ulink></entry><entry>         move maven artifacts into &quot;dist-maven&quot; subdir of the release (package target)
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-985'>ZOOKEEPER-985</ulink>]</entry><entry>        Test BookieRecoveryTest fails on trunk.
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-758">ZOOKEEPER-758</ulink></entry><entry>         zkpython segfaults on invalid acl with missing key
+
+        
+<row><entry>        Improvement
+</entry><entry></entry></row>
+
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-960'>ZOOKEEPER-960</ulink>]</entry><entry>        Publish BookKeeper jars into maven.
 </entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-763">ZOOKEEPER-763</ulink></entry><entry>         Deadlock on close w/ zkpython / c client
-</entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-764">ZOOKEEPER-764</ulink></entry><entry>         Observer elected leader due to inconsistent voting view
-</entry></row>
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-766">ZOOKEEPER-766</ulink></entry><entry>         forrest recipes docs don't mention the lock/queue recipe implementations available in the release
-</entry></row>
+
     
-<row>
-  <entry>Improvement</entry>
-  <entry></entry>
-</row>
+<row><entry>        New Feature
+</entry><entry></entry></row>
 
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-631">ZOOKEEPER-631</ulink></entry><entry>         zkpython's C code could do with a style clean-up
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-465'>ZOOKEEPER-465</ulink>]</entry><entry>        Ledger size in bytes
 </entry></row>
-
-<row>
-  <entry>Task</entry>
-  <entry></entry>
-</row>
-
-<row><entry><ulink url="https://issues.apache.org/jira/browse/ZOOKEEPER-754">ZOOKEEPER-754</ulink></entry><entry>         numerous misspellings &quot;succesfully&quot;
+<row><entry>[<ulink url='https://issues.apache.org/jira/browse/ZOOKEEPER-712'>ZOOKEEPER-712</ulink>]</entry><entry>        Bookie recovery
 </entry></row>
-
 
 
 </tbody></tgroup></table>

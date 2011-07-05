@@ -301,17 +301,17 @@ int check_is_acl(PyObject *o) {
       return 0;
     }
     entry = PyDict_GetItemString( element, "perms" );
-    if (entry == Py_None) {
+    if (entry == NULL) {
       return 0;
     }
 
     entry = PyDict_GetItemString( element, "scheme" );
-    if (entry == Py_None) {
+    if (entry == NULL) {
       return 0;
     }
 
     entry = PyDict_GetItemString( element, "id" );
-    if (entry == Py_None) {
+    if (entry == NULL) {
       return 0;
     }
   }
@@ -436,7 +436,7 @@ void watcher_dispatch(zhandle_t *zzh, int type, int state,
   if (PyObject_CallObject((PyObject*)callback, arglist) == NULL) {
     PyErr_Print();
   }
-  if (pyw->permanent == 0) {
+  if (pyw->permanent == 0 && (type != ZOO_SESSION_EVENT || is_unrecoverable(zzh) == ZINVALIDSTATE)) {
     free_pywatcher(pyw);
   }
   PyGILState_Release(gstate);
@@ -842,7 +842,7 @@ PyObject *pyzoo_aget_children(PyObject *self, PyObject *args)
   int err = zoo_awget_children( zhandles[zkhid],
                                 path,
                                 get_watch != Py_None ? watcher_dispatch : NULL,
-                                pyw,
+                                get_pyw,
                                 strings_completion_dispatch,
                                 pyw);
   if (err != ZOK) {
@@ -1011,6 +1011,7 @@ static PyObject *pyzoo_create(PyObject *self, PyObject *args)
   }
   zhandle_t *zh = zhandles[zkhid];
   int err = zoo_create(zh, path, values, valuelen, &aclv, flags, realbuf, maxbuf_len);
+  free_acls(&aclv);
   if (err != ZOK) {
     PyErr_SetString(err_to_exception(err), zerror(err));
     return NULL;
@@ -1183,7 +1184,7 @@ static PyObject *pyzoo_get(PyObject *self, PyObject *args)
   }
   buffer = malloc(sizeof(char)*buffer_len);
   if (buffer == NULL) {
-    free(pw);
+    free_pywatcher(pw);
     PyErr_SetString(PyExc_MemoryError, "buffer could not be allocated in pyzoo_get");
     return NULL;
   }
@@ -1193,14 +1194,17 @@ static PyObject *pyzoo_get(PyObject *self, PyObject *args)
                      pw, buffer, 
                      &buffer_len, &stat);
  
-  PyObject *stat_dict = build_stat( &stat );
-
   if (err != ZOK) {
     PyErr_SetString(err_to_exception(err), zerror(err));
+    free_pywatcher(pw);
+    free(buffer);
     return NULL;
   }
+
+  PyObject *stat_dict = build_stat( &stat );
   PyObject *ret = Py_BuildValue( "(s#,N)", buffer,buffer_len, stat_dict );
   free(buffer);
+
   return ret;
 }
 

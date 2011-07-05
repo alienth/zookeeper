@@ -193,7 +193,12 @@ public class FileTxnLog implements TxnLog {
                         + hdr.getType());
             }
             if (logStream==null) {
-               logFileWrite = new File(logDir, ("log." +
+               if(LOG.isInfoEnabled()){
+                    LOG.info("Creating new log file: log." +  
+                            Long.toHexString(hdr.getZxid()));
+               }
+               
+               logFileWrite = new File(logDir, ("log." + 
                        Long.toHexString(hdr.getZxid())));
                fos = new FileOutputStream(logFileWrite);
                logStream=new BufferedOutputStream(fos);
@@ -565,11 +570,14 @@ public class FileTxnLog implements TxnLog {
                 inputStream.close();
                 inputStream = null;
                 ia = null;
+                hdr = null;
                 // thsi means that the file has ended
                 // we shoud go to the next file
                 if (!goToNextLog()) {
                     return false;
                 }
+                // if we went to the next log file, we should call next() again
+                return next();
             }
             return true;
         }

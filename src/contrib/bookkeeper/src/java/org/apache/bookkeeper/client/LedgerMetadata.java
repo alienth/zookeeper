@@ -33,7 +33,7 @@ import org.apache.log4j.Logger;
  * in zookeeper. It provides parsing and serialization methods of such metadata.
  * 
  */
-class LedgerMetadata {
+public class LedgerMetadata {
     static final Logger LOG = Logger.getLogger(LedgerMetadata.class);
 
     private static final String closed = "CLOSED";
@@ -45,6 +45,7 @@ class LedgerMetadata {
     public static final int NOTCLOSED = -101;
     int ensembleSize;
     int quorumSize;
+    long length;
     long close;
     private SortedMap<Long, ArrayList<InetSocketAddress>> ensembles = new TreeMap<Long, ArrayList<InetSocketAddress>>();
     ArrayList<InetSocketAddress> currentEnsemble;
@@ -52,6 +53,12 @@ class LedgerMetadata {
     public LedgerMetadata(int ensembleSize, int quorumSize) {
         this.ensembleSize = ensembleSize;
         this.quorumSize = quorumSize;
+        
+        /*
+         * It is set in PendingReadOp.readEntryComplete, and 
+         * we read it in LedgerRecoveryOp.readComplete.
+         */
+        this.length = 0;
         this.close = NOTCLOSED;
     };
 
@@ -59,6 +66,17 @@ class LedgerMetadata {
         this(0, 0);
     }
 
+    /**
+     * Get the Map of bookie ensembles for the various ledger fragments 
+     * that make up the ledger.
+     * 
+     * @return SortedMap of Ledger Fragments and the corresponding 
+     * bookie ensembles that store the entries.
+     */
+    public SortedMap<Long, ArrayList<InetSocketAddress>> getEnsembles() {
+        return ensembles;
+    }
+    
     boolean isClosed() {
         return close != NOTCLOSED;
     }
@@ -66,7 +84,7 @@ class LedgerMetadata {
     void close(long entryId) {
         close = entryId;
     }
-
+    
     void addEnsemble(long startEntryId, ArrayList<InetSocketAddress> ensemble) {
         assert ensembles.isEmpty() || startEntryId >= ensembles.lastKey();
 
@@ -106,7 +124,7 @@ class LedgerMetadata {
      */
     public byte[] serialize() {
         StringBuilder s = new StringBuilder();
-        s.append(quorumSize).append(lSplitter).append(ensembleSize);
+        s.append(quorumSize).append(lSplitter).append(ensembleSize).append(lSplitter).append(length);
 
         for (Map.Entry<Long, ArrayList<InetSocketAddress>> entry : ensembles.entrySet()) {
             s.append(lSplitter).append(entry.getKey());
@@ -115,7 +133,7 @@ class LedgerMetadata {
                 StringUtils.addrToString(s, addr);
             }
         }
-
+        
         if (close != NOTCLOSED) {
             s.append(lSplitter).append(close).append(tSplitter).append(closed);
         }
@@ -155,8 +173,9 @@ class LedgerMetadata {
         try {
             lc.quorumSize = new Integer(lines[0]);
             lc.ensembleSize = new Integer(lines[1]);
-
-            for (int i = 2; i < lines.length; i++) {
+            lc.length = new Long(lines[2]); 
+            
+            for (int i = 3; i < lines.length; i++) {
                 String parts[] = lines[i].split(tSplitter);
 
                 if (parts[1].equals(closed)) {

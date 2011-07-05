@@ -363,7 +363,7 @@ checkReleaseAuditWarnings () {
         echo "Lines that start with ????? in the release audit report indicate files that do not have an Apache license header." > $PATCH_DIR/releaseAuditDiffWarnings.txt
         echo "" > $PATCH_DIR/releaseAuditDiffWarnings.txt
         diff $PATCH_DIR/patchReleaseAuditProblems.txt $PATCH_DIR/trunkReleaseAuditProblems.txt >> $PATCH_DIR/releaseAuditDiffWarnings.txt
-        JIRA_COMMENT_FOOTER="Release audit warnings: http://hudson.zones.apache.org/hudson/job/$JOB_NAME/$BUILD_NUMBER/artifact/trunk/patchprocess/releaseAuditDiffWarnings.txt
+        JIRA_COMMENT_FOOTER="Release audit warnings: http://hudson.apache.org/hudson/job/$JOB_NAME/$BUILD_NUMBER/artifact/trunk/patchprocess/releaseAuditDiffWarnings.txt
 $JIRA_COMMENT_FOOTER"
         return 1
       fi
@@ -392,7 +392,7 @@ checkStyle () {
   echo ""
   echo "$ANT_HOME/bin/ant  -D${PROJECT_NAME}PatchProcess= checkstyle"
   $ANT_HOME/bin/ant  -D${PROJECT_NAME}PatchProcess= checkstyle
-  JIRA_COMMENT_FOOTER="Checkstyle results: http://hudson.zones.apache.org/hudson/job/$JOB_NAME/$BUILD_NUMBER/artifact/trunk/build/test/checkstyle-errors.html
+  JIRA_COMMENT_FOOTER="Checkstyle results: http://hudson.apache.org/hudson/job/$JOB_NAME/$BUILD_NUMBER/artifact/trunk/build/test/checkstyle-errors.html
 $JIRA_COMMENT_FOOTER"
   ### TODO: calculate actual patchStyleErrors
 #  patchStyleErrors=0
@@ -428,7 +428,7 @@ checkFindbugsWarnings () {
     -1 findbugs.  The patch appears to cause Findbugs to fail."
     return 1
   fi
-JIRA_COMMENT_FOOTER="Findbugs warnings: http://hudson.zones.apache.org/hudson/job/$JOB_NAME/$BUILD_NUMBER/artifact/trunk/build/test/findbugs/newPatchFindbugsWarnings.html
+JIRA_COMMENT_FOOTER="Findbugs warnings: http://hudson.apache.org/hudson/job/$JOB_NAME/$BUILD_NUMBER/artifact/trunk/build/test/findbugs/newPatchFindbugsWarnings.html
 $JIRA_COMMENT_FOOTER"
   cp $BASEDIR/build/test/findbugs/*.xml $PATCH_DIR/patchFindbugsWarnings.xml
 $FINDBUGS_HOME/bin/setBugDatabaseInfo -timestamp "01/01/1999" \
@@ -641,7 +641,7 @@ cleanupAndExit () {
 ###############################################################################
 
 JIRA_COMMENT=""
-JIRA_COMMENT_FOOTER="Console output: http://hudson.zones.apache.org/hudson/job/$JOB_NAME/$BUILD_NUMBER/console
+JIRA_COMMENT_FOOTER="Console output: http://hudson.apache.org/hudson/job/$JOB_NAME/$BUILD_NUMBER/console
 
 This message is automatically generated."
 
@@ -690,7 +690,7 @@ runCoreTests
 runContribTests
 (( RESULT = RESULT + $? ))
 fi
-JIRA_COMMENT_FOOTER="Test results: http://hudson.zones.apache.org/hudson/job/$JOB_NAME/$BUILD_NUMBER/testReport/
+JIRA_COMMENT_FOOTER="Test results: http://hudson.apache.org/hudson/job/$JOB_NAME/$BUILD_NUMBER/testReport/
 $JIRA_COMMENT_FOOTER"
 
 submitJiraComment $RESULT

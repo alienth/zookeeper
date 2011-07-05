@@ -30,12 +30,14 @@ import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Date;
 
 import org.apache.log4j.Logger;
 
 /**
  * This class implements a connection manager for leader election using TCP. It
- * maintains one coonection for every pair of servers. The tricky part is to
+ * maintains one connection for every pair of servers. The tricky part is to
  * guarantee that there is exactly one connection for every pair of servers that
  * are operating correctly and that can communicate over the network.
  * 
@@ -75,6 +77,12 @@ public class QuorumCnxManager {
     private long observerCounter = -1;
     
     /*
+     * Connection time out value in milliseconds 
+     */
+    
+    private int cnxTO = 5000;
+    
+    /*
      * Local IP address
      */
     final QuorumPeer self;
@@ -102,6 +110,11 @@ public class QuorumCnxManager {
      */
     public final Listener listener;
 
+    /*
+     * Counter to count worker threads
+     */
+    private AtomicInteger threadCnt = new AtomicInteger(0);
+
     static public class Message {
         Message(ByteBuffer buffer, long sid) {
             this.buffer = buffer;
@@ -118,6 +131,11 @@ public class QuorumCnxManager {
         this.senderWorkerMap = new ConcurrentHashMap<Long, SendWorker>();
         this.lastMessageSent = new ConcurrentHashMap<Long, ByteBuffer>();
         
+        String cnxToValue = System.getProperty("zookeeper.cnxTimeout");
+        if(cnxToValue != null){
+            this.cnxTO = new Integer(cnxToValue); 
+        }
+        
         this.self = self;
 
         // Starts listener thread that waits for connection requests 
@@ -131,9 +149,12 @@ public class QuorumCnxManager {
      */
     public void testInitiateConnection(long sid) throws Exception {
         SocketChannel channel;
-        LOG.debug("Opening channel to server "  + sid);
-        channel = SocketChannel
-                .open(self.getVotingView().get(sid).electionAddr);
+        if(LOG.isDebugEnabled()){
+            LOG.debug("Opening channel to server "  + sid);
+        }
+        
+        channel = SocketChannel.open();
+        channel.socket().connect(self.getVotingView().get(sid).electionAddr, cnxTO);
         channel.socket().setTcpNoDelay(true);
         initiateConnection(channel, sid);
     }
@@ -169,15 +190,15 @@ public class QuorumCnxManager {
         // Otherwise proceed with the connection
         } else {    
             SendWorker sw = new SendWorker(s, sid);
-            RecvWorker rw = new RecvWorker(s, sid);
+            RecvWorker rw = new RecvWorker(s, sid, sw);
             sw.setRecv(rw);
 
             SendWorker vsw = senderWorkerMap.get(sid);
-            senderWorkerMap.put(sid, sw);
             
             if(vsw != null)
                 vsw.finish();
-
+            
+            senderWorkerMap.put(sid, sw);
             if (!queueSendMap.containsKey(sid)) {
                 queueSendMap.put(sid, new ArrayBlockingQueue<ByteBuffer>(
                         CAPACITY));
@@ -192,8 +213,6 @@ public class QuorumCnxManager {
         return false;
     }
 
-    
-    
     /**
      * If this server receives a connection request, then it gives up on the new
      * connection if it wins. Notice that it checks whether it has a connection
@@ -254,15 +273,16 @@ public class QuorumCnxManager {
         //Otherwise start worker threads to receive data.
         } else {
             SendWorker sw = new SendWorker(s, sid);
-            RecvWorker rw = new RecvWorker(s, sid);
+            RecvWorker rw = new RecvWorker(s, sid, sw);
             sw.setRecv(rw);
 
             SendWorker vsw = senderWorkerMap.get(sid);
-            senderWorkerMap.put(sid, sw);
             
             if(vsw != null)
                 vsw.finish();
-
+            
+            senderWorkerMap.put(sid, sw);
+            
             if (!queueSendMap.containsKey(sid)) {
                 queueSendMap.put(sid, new ArrayBlockingQueue<ByteBuffer>(
                         CAPACITY));
@@ -343,9 +363,12 @@ public class QuorumCnxManager {
             }
             try {
                 SocketChannel channel;
-                LOG.debug("Opening channel to server "  + sid);
-                channel = SocketChannel
-                        .open(self.getView().get(sid).electionAddr);
+                if(LOG.isDebugEnabled()){
+                    LOG.debug("Opening channel to server "  + sid);
+                }
+                
+                channel = SocketChannel.open();
+                channel.socket().connect(self.getView().get(sid).electionAddr, cnxTO);                
                 channel.socket().setTcpNoDelay(true);
                 initiateConnection(channel, sid);
             } catch (UnresolvedAddressException e) {
@@ -415,6 +438,20 @@ public class QuorumCnxManager {
     		LOG.debug("Halting sender: " + sw);
     		sw.finish();
     	}   	
+    }
+
+    /*
+     * Return number of worker threads
+     */
+    public long getThreadCount() {
+        return threadCnt.get();
+    }
+
+    /**
+     * Return reference to QuorumPeer
+     */
+    public QuorumPeer getQuorumPeer() {
+        return self;
     }
 
     /**
@@ -518,10 +555,19 @@ public class QuorumCnxManager {
         }
                 
         synchronized boolean finish() {
+            if(LOG.isDebugEnabled()){
+                LOG.debug("Calling finish");
+            }
+            
+            if(!running){
+                /*
+                 * Avoids running finish() twice. 
+                 */
+                return running;
+            }
+            
             running = false;
-
-            LOG.debug("Calling finish");
-            this.interrupt();
+            
             try{
                 channel.close();
             } catch (IOException e) {
@@ -532,7 +578,12 @@ public class QuorumCnxManager {
             this.interrupt();
             if (recvWorker != null)
                 recvWorker.finish();
+            
+            if(LOG.isDebugEnabled()){
+                LOG.debug("Removing entry from senderWorkerMap sid=" + sid);
+            }
             senderWorkerMap.remove(sid);
+            threadCnt.decrementAndGet();
             return running;
         }
         
@@ -552,6 +603,7 @@ public class QuorumCnxManager {
 
         @Override
         public void run() {
+            threadCnt.incrementAndGet();
             try{
                 ByteBuffer b = lastMessageSent.get(sid); 
                 if(b != null) send(b);   
@@ -583,7 +635,8 @@ public class QuorumCnxManager {
                     }
                 }
             } catch (Exception e) {
-                LOG.warn("Exception when using channel: " + sid, e);
+                LOG.warn("Exception when using channel: for id " + sid + " my id = " + 
+                        self.getId() + " error = " + e);
             }
             this.finish();
             LOG.warn("Send worker leaving thread");
@@ -598,10 +651,12 @@ public class QuorumCnxManager {
         Long sid;
         SocketChannel channel;
         volatile boolean running = true;
+        final SendWorker sw;
 
-        RecvWorker(SocketChannel channel, Long sid) {
+        RecvWorker(SocketChannel channel, Long sid, SendWorker sw) {
             this.sid = sid;
             this.channel = channel;
+            this.sw = sw;
         }
         
         /**
@@ -610,13 +665,22 @@ public class QuorumCnxManager {
          * @return boolean  Value of variable running
          */
         synchronized boolean finish() {
-            running = false;
+            if(!running){
+                /*
+                 * Avoids running finish() twice. 
+                 */
+                return running;
+            }
+            running = false;            
+
             this.interrupt();
+            threadCnt.decrementAndGet();
             return running;
         }
 
         @Override
         public void run() {
+            threadCnt.incrementAndGet();
             try {
                 byte[] size = new byte[4];
                 ByteBuffer msgLength = ByteBuffer.wrap(size);
@@ -632,31 +696,39 @@ public class QuorumCnxManager {
                     }
                     msgLength.position(0);
                     int length = msgLength.getInt();
+                    if(length <= 0) {
+                        throw new IOException("Invalid packet length:" + length);
+                    }
                     /**
                      * Allocates a new ByteBuffer to receive the message
                      */
-                    if (length > 0) {
-                        if (length > PACKETMAXSIZE) {
-                            throw new IOException("Invalid packet of length " + length);
-                        }
-                        byte[] msgArray = new byte[length];
-                        ByteBuffer message = ByteBuffer.wrap(msgArray);
-                        int numbytes = 0;
-                        while (message.hasRemaining()) {
-                            numbytes += channel.read(message);
-                        }
-                        message.position(0);
-                        synchronized (recvQueue) {
-                            recvQueue
-                                    .put(new Message(message.duplicate(), sid));
-                        }
-                        msgLength.position(0);
+                    if (length > PACKETMAXSIZE) {
+                        throw new IOException("Invalid packet of length " + length);
                     }
+                    byte[] msgArray = new byte[length];
+                    ByteBuffer message = ByteBuffer.wrap(msgArray);
+                    int numbytes = 0;
+                    int temp_numbytes = 0;
+                    while (message.hasRemaining()) {
+                        temp_numbytes = channel.read(message); 
+                        if(temp_numbytes < 0) {
+                            throw new IOException("Channel eof before end");
+                        }
+                        numbytes += temp_numbytes;
+                    }
+                    message.position(0);
+                    synchronized (recvQueue) {
+                        recvQueue
+                        .put(new Message(message.duplicate(), sid));
+                    }
+                    msgLength.position(0);
                 }
-
             } catch (Exception e) {
-                LOG.warn("Connection broken: ", e);
+                LOG.warn("Connection broken for id " + sid + ", my id = " + 
+                        self.getId() + ", error = " + e);
             } finally {
+                LOG.warn("Interrupting SendWorker");
+                sw.finish();
                 try{
                     channel.socket().close();
                 } catch (IOException e) {

@@ -1,3 +1,109 @@
+Release 3.3.3 - 2011-02-23
+Backward compatible changes:
+
+BUGFIXES:
+  ZOOKEEPER-957. zkCleanup.sh doesn't do anything (Ted Dunning via mahadev)
+
+  ZOOKEEPER-888. c-client / zkpython: Double free corruption on node
+  watcher (Austin Shoemaker via henryr)
+
+  ZOOKEEPER-921. zkPython incorrectly checks for existence of required
+  ACL elements (Nicholas Knight via henryr)
+
+  ZOOKEEPER-882. Startup loads last transaction from snapshot
+  (Jared Cantwell via breed)
+
+  ZOOKEEPER-962. leader/follower coherence issue when follower is receiving a
+  DIFF (Camille Fournier via breed)
+
+  ZOOKEEPER-913. Version parser fails to parse "3.3.2-dev" from build.xml
+  (Anthony Urso and phunt via phunt)
+
+  ZOOKEEPER-985. Test BookieRecoveryTest fails on trunk. (fpj via breed)
+
+  ZOOKEEPER-880. QuorumCnxManager$SendWorker grows without bounds (vishal via breed)
+
+IMPROVEMENTS:
+  ZOOKEEPER-963. Make Forrest work with JDK6 (Carl Steinbach via henryr)
+
+  ZOOKEEPER-712. Bookie recovery (Erwin and flavio via mahadev)
+
+  ZOOKEEPER-465. Ledger size in bytes. (Flavio via mahadev)
+
+  ZOOKEEPER-960. Publish BookKeeper jars into maven. (mahadev via breed)
+
+Release 3.3.2 - 2010-11-04
+Backward compatible changes:
+
+BUGFIXES:
+  ZOOKEEPER-783. committedLog in ZKDatabase is not properly synchronized
+  (henry via mahadev)
+
+  ZOOKEEPER-790. Last processed zxid set prematurely while establishing 
+  leadership (flavio via mahadev)
+
+  ZOOKEEPER-772. zkpython segfaults when watcher from async get children 
+  is invoked. (henry robinson via mahadev)
+
+  ZOOKEEPER-795. eventThread isn't shutdown after a connection
+  "session expired" event coming (sergey doroshenko via breed)
+
+  ZOOKEEPER-792. zkpython memory leak (Lei Zhang via henryr)
+
+  ZOOKEEPER-785. Zookeeper 3.3.1 shouldn't infinite loop if someone creates a
+  server.0 line (phunt and Andrei Savu via breed)
+
+  ZOOKEEPER-785. Zookeeper 3.3.1 shouldn't infinite loop if someone creates a
+  server.0 line (part 2) (phunt)
+
+  ZOOKEEPER-846. zookeeper client doesn't shut down cleanly on the close call
+  (phunt)
+  
+  ZOOKEEPER-804. c unit tests failing due to "assertion cptr failed" (michi
+  mutsuzaki via mahadev)
+
+  ZOOKEEPER-844. handle auth failure in java client
+  (Camille Fournier via phunt)
+
+  ZOOKEEPER-822. Leader election taking a long time to complete
+  (Vishal K via phunt)
+
+  ZOOKEEPER-881. ZooKeeperServer.loadData loads database twice
+  (Jared Cantwell via fpj)
+
+  ZOOKEEPER-855. clientPortBindAddress should be clientPortAddress
+  (Jared Cantwell via fpj)
+
+  ZOOKEEPER-893. ZooKeeper high cpu usage when invalid requests
+  (Thijs Terlouw via phunt)
+
+  ZOOKEEPER-804. c unit tests failing due to "assertion cptr failed"
+  (second try - Jared Cantwell via phunt)
+
+  ZOOKEEPER-820. update c unit tests to ensure "zombie" java server
+  processes don't cause failure (Michi Mutsuzaki via phunt)
+
+  ZOOKEEPER-794. Callbacks are not invoked when the client is closed
+  (Alexis Midon via phunt)
+
+  ZOOKEEPER-800. zoo_add_auth returns ZOK if zookeeper handle is in
+  ZOO_CLOSED_STATE (Michi Mutsuzaki via mahadev konar)
+
+  ZOOKEEPER-904. super digest is not actually acting as a full superuser
+  (Camille Fournier via mahadev)
+
+  ZOOKEEPER-897. C Client seg faults during close (jared cantwell via mahadev)
+
+  ZOOKEEPER-898. C Client might not cleanup correctly during close 
+  (jared cantwell via mahadev)
+
+  ZOOKEEPER-907. Spurious "KeeperErrorCode = Session moved" messages (vishal k via breed)
+
+IMPROVEMENTS:
+
+  ZOOKEEPER-789. Improve FLE log messages (flavio via phunt)
+
+
 Release 3.3.1 - 2010-05-11
 Backward compatible changes:
 
@@ -46,6 +152,8 @@ BUGFIXES:
 
   ZOOKEEPER-766. forrest recipes docs don't mention the lock/queue recipe
   implementations available in the release (phunt via mahadev)
+
+  ZOOKEEPER-790. Last processed zxid set prematurely while establishing leadership (fpj via breed)
 
 Release 3.3.0 - 2010-03-24
 
