@@ -12,6 +12,7 @@ Build-Depends: debhelper (>= 7.4.11), javahelper (>= 0.28), default-jdk (>= 1:1.
  libjline-java, libnetty-java, javacc, default-jdk-doc, python-all-dev (>= 2.6.6-3~),
  libboost-dev, libxml2-dev, liblog4cxx10-dev, autoconf, help2man, libtool, automake,
  libcppunit-dev
+X-Python-Version: 2.6
 
 Package: libzookeeper-java
 Architecture: all
