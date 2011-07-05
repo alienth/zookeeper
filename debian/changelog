@@ -1,14 +1,16 @@
-zookeeper (3.3.1+dfsg1-3) unstable; urgency=low
+zookeeper (3.3.3+dfsg1-1) unstable; urgency=low
 
+  * New upstream release.
   * Fix FTBFS on mips - platform should not be supported.
     (Closes: #626020).
   * Added myself to Uploaders.
   * Removed Thomas Koch from Uploaders - thanks for all of your work.
   * Bumped Standards-Version: 3.9.2.
   * Transitioned to dh_python2.
-  * Fixed FTBFS due to -Werror actually working.
+  * Fixed FTBFS due to -Werror actually working and causing build 
+    failures.
 
- -- James Page <james.page@ubuntu.com>  Tue, 05 Jul 2011 12:59:04 +0100
+ -- James Page <james.page@ubuntu.com>  Tue, 05 Jul 2011 14:29:45 +0100
 
 zookeeper (3.3.1+dfsg1-2) unstable; urgency=low
 

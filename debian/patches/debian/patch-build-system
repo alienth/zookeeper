@@ -1,11 +1,11 @@
-diff --git a/build.xml b/build.xml
-index 31af20f..5a6648c 100644
---- a/build.xml
-+++ b/build.xml
+Index: zookeeper/build.xml
+===================================================================
+--- zookeeper.orig/build.xml	2011-07-05 14:27:39.000000000 +0100
++++ zookeeper/build.xml	2011-07-05 14:28:28.176546056 +0100
 @@ -25,7 +25,7 @@
      <property environment="env"/>
      
-     <property name="version" value="3.3.2-dev" />
+     <property name="version" value="3.3.3" />
 -    <property name="final.name" value="${name}-${version}"/>
 +    <property name="final.name" value="${name}"/>
      <property name="revision.dir" value="${basedir}/.revision" />
@@ -55,10 +55,10 @@ index 31af20f..5a6648c 100644
          <javac srcdir="${java.src.dir}" destdir="${build.classes}" 
                 target="${javac.target}" debug="on">
              <classpath refid="java.classpath"/>
-diff --git a/src/contrib/bookkeeper/build.xml b/src/contrib/bookkeeper/build.xml
-index acd287b..1c485fc 100644
---- a/src/contrib/bookkeeper/build.xml
-+++ b/src/contrib/bookkeeper/build.xml
+Index: zookeeper/src/contrib/bookkeeper/build.xml
+===================================================================
+--- zookeeper.orig/src/contrib/bookkeeper/build.xml	2011-07-05 14:27:39.000000000 +0100
++++ zookeeper/src/contrib/bookkeeper/build.xml	2011-07-05 14:28:00.966546073 +0100
 @@ -34,7 +34,7 @@
  
    <target name="setjarname">
@@ -68,10 +68,10 @@ index acd287b..1c485fc 100644
    </target>
  
    <target name="init" depends="checkMainCompiled, zookeeperbuildcontrib.init"/>
-diff --git a/src/contrib/build-contrib.xml b/src/contrib/build-contrib.xml
-index 925d9f8..b622408 100644
---- a/src/contrib/build-contrib.xml
-+++ b/src/contrib/build-contrib.xml
+Index: zookeeper/src/contrib/build-contrib.xml
+===================================================================
+--- zookeeper.orig/src/contrib/build-contrib.xml	2011-07-05 13:50:34.000000000 +0100
++++ zookeeper/src/contrib/build-contrib.xml	2011-07-05 14:28:00.966546073 +0100
 @@ -70,25 +70,14 @@
  
    <path id="classpath">
@@ -129,10 +129,10 @@ index 925d9f8..b622408 100644
    </target>
  
  
-diff --git a/src/contrib/zooinspector/build.xml b/src/contrib/zooinspector/build.xml
-index 04e2aff..21b4d85 100644
---- a/src/contrib/zooinspector/build.xml
-+++ b/src/contrib/zooinspector/build.xml
+Index: zookeeper/src/contrib/zooinspector/build.xml
+===================================================================
+--- zookeeper.orig/src/contrib/zooinspector/build.xml	2011-07-05 13:50:34.000000000 +0100
++++ zookeeper/src/contrib/zooinspector/build.xml	2011-07-05 14:28:00.966546073 +0100
 @@ -20,7 +20,7 @@
  
  
