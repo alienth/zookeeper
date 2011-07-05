@@ -1,3 +1,13 @@
+zookeeper (3.3.1+dfsg1-3) unstable; urgency=low
+
+  * Fix FTBFS on mips - platform should not be supported.
+    (Closes: #626020).
+  * Added myself to Uploaders.
+  * Removed Thomas Koch from Uploaders - thanks for all of your work.
+  * Bumped Standards-Version: 3.9.2.
+
+ -- James Page <james.page@ubuntu.com>  Tue, 05 Jul 2011 09:52:42 +0100
+
 zookeeper (3.3.1+dfsg1-2) unstable; urgency=low
 
   * FIX: cronjob, init.d fail after package removal. Closes: #582757
