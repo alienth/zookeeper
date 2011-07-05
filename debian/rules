@@ -1,10 +1,9 @@
 #!/usr/bin/make -f
 
-export JAVA_HOME=/usr/lib/jvm/default-java/
-#export CLASSPATH=lib/*:build/classes:debian/_jh_build.zookeeper
+export JAVA_HOME=/usr/lib/jvm/default-java
 
 PYVERS := $(shell pyversions -vr)
-DEB_UPSTREAM_VERSION := 
+DEB_UPSTREAM_VERSION=$(shell dpkg-parsechangelog | sed -rne 's,^Version: ([^+]+).*,\1,p')
 
 %:
 	dh --with javahelper --with python2 $@
@@ -15,7 +14,7 @@ override_dh_auto_build:
 	javacc -OUTPUT_DIRECTORY=src/java/main/org/apache/jute/compiler/generated src/java/main/org/apache/jute/compiler/generated/rcc.jj
 	# the upstream build file includes .java files in the jars. Let's create the jars ourselves.
 	# see: https://issues.apache.org/jira/browse/ZOOKEEPER-537
-	ant -Dversion=3.3.3 -DlastRevision=-1 javadoc javadoc-dev jar
+	ant -Dversion=$(DEB_UPSTREAM_VERSION) -DlastRevision=-1 javadoc javadoc-dev jar
 
 	# compile C library
 	cd src/c && autoreconf -i
@@ -23,8 +22,8 @@ override_dh_auto_build:
 	$(MAKE) -C src/c
 
 	# compile contribs
-	cd src/contrib && ant -Dversion=3.3.3 -DlastRevision=-1 -Ddest.dir=../../build/zookeeper -Divy.jar.exists=true -Divy.initialized=true -Dcontribfilesetincludes="bookkeeper/build.xml"
-	cd src/contrib && ant -Dversion=3.3.3 -DlastRevision=-1 -Ddest.dir=../../build/zookeeper -Divy.jar.exists=true -Divy.initialized=true -Dcontribfilesetincludes="zooinspector/build.xml"
+	cd src/contrib && ant -Dversion=$(DEB_UPSTREAM_VERSION) -DlastRevision=-1 -Ddest.dir=../../build/zookeeper -Divy.jar.exists=true -Divy.initialized=true -Dcontribfilesetincludes="bookkeeper/build.xml"
+	cd src/contrib && ant -Dversion=$(DEB_UPSTREAM_VERSION) -DlastRevision=-1 -Ddest.dir=../../build/zookeeper -Divy.jar.exists=true -Divy.initialized=true -Dcontribfilesetincludes="zooinspector/build.xml"
 
 	cd src/contrib/zkpython && \
 	  for pv in $(PYVERS); do \

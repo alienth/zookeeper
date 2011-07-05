@@ -1,16 +1,20 @@
 zookeeper (3.3.3+dfsg1-1) unstable; urgency=low
 
   * New upstream release.
-  * Fix FTBFS on mips - platform should not be supported.
-    (Closes: #626020).
+  * Resolve FTBFS on mips and hppa - platforms should not be supported 
+    as zookeeper needs default-jdk >= 1:1.6 (Closes: #626020,#594970).
   * Added myself to Uploaders.
   * Removed Thomas Koch from Uploaders - thanks for all of your work.
-  * Bumped Standards-Version: 3.9.2.
-  * Transitioned to dh_python2.
+  * Bumped Standards-Version: 3.9.2; no changes.
+  * Transition to dh_python2.
   * Fixed FTBFS due to -Werror actually working and causing build 
-    failures.
+    failures in gcc >= 4.6.1 (Closes: #625441).
+  * debian/bin/zkPurgeTxnLog.sh: Switch DATADIR and DATALOGDIR to match
+    parameter ordering in Zookeeper code (Closes: #601383) - thanks to 
+    Paul Paradise for identifying this issue and the fix.
+  * debian/copyright: upgrade to DEP-5 format.
 
- -- James Page <james.page@ubuntu.com>  Tue, 05 Jul 2011 14:29:45 +0100
+ -- James Page <james.page@ubuntu.com>  Tue, 05 Jul 2011 16:22:43 +0100
 
 zookeeper (3.3.1+dfsg1-2) unstable; urgency=low
 

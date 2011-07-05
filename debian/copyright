@@ -1,80 +1,51 @@
-This package was debianized by Thomas Koch <thomas.koch@ymc.ch> on
-Fr 8. Jan 16:26:43 CET 2010.
+Format-Specification: http://dep.debian.net/deps/dep5/
+Name: Apache Zookeeper
+Source: http://hadoop.apache.org/zookeeper/releases.html
 
-It was downloaded from:
-	http://hadoop.apache.org/zookeeper/releases.html
-
-Upstream Authors:
-    Copyright (C) 2008-2009, The Apache Software Foundation
-    Contributors:
-       Patrick Hunt  
-       Flavio Junqueira 
-       Mahadev Konar 
-       Andrew Kornev 
-       Benjamin Reed 
-    
-For more details about the upstream authors, see: http://hadoop.apache.org/zookeeper/credits.html
-
+Files: *
+Copyright: 2008-2009, The Apache Software Foundation
 License: Apache-2.0
 
-	Licensed under the Apache License, Version 2.0 (the "License");
-	you may not use this file except in compliance with the License.
-	You may obtain a copy of the License at
+Files: src/contrib/zooinspector/src/java/com/*,
+       debian/patches/add_jtoaster_source_to_zooinspector
+Copyright: Daniele Piras ("danielepiras80", no email).
+License: Apache-2.0 
 
-	    http://www.apache.org/licenses/LICENSE-2.0
+Files: src/c/src/hashtable/*
+Copyright: 2002, 2004, Christopher Clark
+License: BSD
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions
+  are met:
+  .  
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+  .
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+  .
+  * Neither the name of the original author; nor the names of any contributors
+    may be used to endorse or promote products derived from this software
+    without specific prior written permission.
+  .
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+  A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	Unless required by applicable law or agreed to in writing, software
-	distributed under the License is distributed on an "AS IS" BASIS,
-	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	See the License for the specific language governing permissions and
-	limitations under the License.
+Files: debian/*
+Copyright: 2010, Thomas Koch <thomas.koch@ymc.ch>,
+           2011, Canonical Ltd (http://www.canonical.com)
+License: Apache-2.0
 
-The full text of the license can be found in
-`/usr/share/common-licenses/Apache-2.0'.
-
-The jtoaster java class in src/contrib/zooinspector/src/java/com/* has been
-downloaded as version 1.0.4 from
-http://sourceforge.net/projects/jtoaster/files/jtoaster/1.0/jtoaster-1.0.4.jar/download
-It's author is Daniele Piras ("danielepiras80", no email). It's licensed under
-the Apache License 2.0.
-
-
-source files under src/c/src/hashtable:
-
-Copyright (c) 2002, 2004, Christopher Clark
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-
-	* Redistributions of source code must retain the above copyright
-notice, this list of conditions and the following disclaimer.
-
-	* Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in the
-documentation and/or other materials provided with the distribution.
-
-	* Neither the name of the original author; nor the names of any contributors
-may be used to endorse or promote products derived from this software
-without specific prior written permission.
-
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
-
-Debian packaging: (C) 2010, Thomas Koch <thomas.koch@ymc.ch>
-
-The Debian packaging of this package is licensed under the Apache
-Software License 2.0 (see above).
+License: Apache-2.0
+  On Debian GNU/Linux system you can find the complete text of the
+  Apache-2.0 license in '/usr/share/common-licenses/Apache-2.0'

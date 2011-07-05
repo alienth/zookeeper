@@ -54,4 +54,4 @@ then
 fi
 
 java -cp $CLASSPATH $JVMFLAGS \
-     org.apache.zookeeper.server.PurgeTxnLog $DATADIR $DATALOGDIR -c $KEEPCOUNT
+     org.apache.zookeeper.server.PurgeTxnLog $DATALOGDIR $DATADIR -c $KEEPCOUNT

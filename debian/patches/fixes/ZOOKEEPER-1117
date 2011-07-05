@@ -1,7 +1,7 @@
 Description: -Werror causes all warnings to be dealt with as errors
- this breaks the build.
+ this breaks the build with gcc >= 4.6.1
 Author: James Page <james.page@ubuntu.com>
-Forwarderd: not-needed
+Forwarderd: https://issues.apache.org/jira/browse/ZOOKEEPER-1117
 
 Index: zookeeper/src/c/Makefile.am
 ===================================================================
@@ -12,7 +12,7 @@ Index: zookeeper/src/c/Makefile.am
  
  AM_CPPFLAGS = -I${srcdir}/include -I${srcdir}/tests -I${srcdir}/generated
 -AM_CFLAGS = -Wall -Werror 
-+AM_CFLAGS = -Wall 
++AM_CFLAGS = -Wall -Werror -Wno-error=unused-but-set-variable 
  CXXFLAGS = -Wall -g $(USEIPV6)
  
  LIB_LDFLAGS = -no-undefined -version-info 2
