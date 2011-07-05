@@ -1,6 +1,6 @@
 The command used to filter and import the upstream tarball was:
 
-git-import-orig --pristine-tar --filter-pristine-tar --no-merge --upstream-version=3.3.1+dfsg1 \
+git-import-orig --pristine-tar --filter-pristine-tar --no-merge --upstream-version=<version> \
                 --filter="*.jar" \
                 --filter="Makefile.in" \
                 --filter="aclocal.m4" \
@@ -10,11 +10,11 @@ git-import-orig --pristine-tar --filter-pristine-tar --no-merge --upstream-versi
                 --filter="config.sub" \
                 --filter="configure" \
                 --filter="ltmain.sh" \
-                --filter="zookeeper-3.3.1/contrib" \
-                --filter="zookeeper-3.3.1/docs" \
-                --filter="zookeeper-3.3.1/recipes" \
-                --filter="zookeeper-3.3.1/dist-maven" \
-                --filter="zookeeper-3.3.1/src/contrib/fatjar" \
-                --filter="zookeeper-3.3.1/src/c/generated" \
-                --filter="zookeeper-3.3.1/src/java/main/org/apache/jute/compiler/generated/*.java" \
-                --filter="zookeeper-3.3.1/src/java/generated" \
+                --filter="zookeeper-3.*/contrib" \
+                --filter="zookeeper-3.*/docs" \
+                --filter="zookeeper-3.*/recipes" \
+                --filter="zookeeper-3.*/dist-maven" \
+                --filter="zookeeper-3.*/src/contrib/fatjar" \
+                --filter="zookeeper-3.*/src/c/generated" \
+                --filter="zookeeper-3.*/src/java/main/org/apache/jute/compiler/generated/*.java" \
+                --filter="zookeeper-3.*/src/java/generated" \
