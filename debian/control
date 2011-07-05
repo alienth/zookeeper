@@ -1,7 +1,8 @@
 Source: zookeeper
 Section: java
 Priority: optional
-Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
 Uploaders: James Page <james.page@ubuntu.com>
 Homepage: http://hadoop.apache.org/zookeeper
 Vcs-Browser: http://git.debian.org/?p=pkg-java/zookeeper.git

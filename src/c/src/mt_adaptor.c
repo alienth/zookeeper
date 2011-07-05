@@ -350,7 +350,11 @@ int32_t inc_ref_counter(zhandle_t* zh,int i)
 int32_t fetch_and_add(volatile int32_t* operand, int incr)
 {
     int32_t result;
-    result = __sync_fetch_and_add(operand, incr);
+    asm __volatile__(
+         "lock xaddl %0,%1\n"
+         : "=r"(result), "=m"(*(int *)operand)
+         : "0"(incr)
+         : "memory");
    return result;
 }
 

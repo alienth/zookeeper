@@ -70,14 +70,25 @@
 
   <path id="classpath">
     <pathelement location="${build.classes}"/>
-    <fileset dir="/usr/share/java">
-      <include name="log4j-1.2.jar" />
-      <include name="jline.jar" />
-      <include name="xercesImpl.jar" />
-      <include name="netty.jar" />
-    </fileset>
     <!-- allow the user to override (e.g. if there are local versions) -->
+    <fileset dir="${additional.lib.dir}">
+      <include name="${additional.lib.dir.includes}" />
+      <exclude name="${additional.lib.dir.excludes}" />
+    </fileset>
+    <fileset refid="lib.jars"/>
     <pathelement location="${zk.root}/build/classes"/>
+    <fileset dir="${ivy.lib}">
+      <include name="**/*.jar" />
+    </fileset>
+    <fileset dir="${ivy.test.lib}">
+      <include name="**/*.jar" />
+    </fileset>
+    <fileset dir="${zk.root}/src/java/lib">
+      <include name="**/*.jar" />
+    </fileset>
+    <fileset dir="${ant.home}/lib">
+      <include name="ant.jar" />
+    </fileset>
   </path>
 
   <!-- ====================================================== -->
@@ -122,7 +133,7 @@
   <target name="jar" depends="compile" unless="skip.contrib">
     <echo message="contrib: ${name}"/>
     <jar
-      jarfile="${build.dir}/zookeeper-${name}.jar"
+      jarfile="${build.dir}/zookeeper-${version}-${name}.jar"
       basedir="${build.classes}"      
     />
   </target>
@@ -200,9 +211,15 @@
   </target>
 
   <target name="ivy-retrieve" depends="init,ivy-init">
+    <ivy:retrieve settingsRef="${ant.project.name}" type="jar" conf="default"
+                  pattern="${ivy.lib}/[artifact]-[revision].[ext]"/>
+    <ivy:retrieve settingsRef="${ant.project.name}" type="bundle" conf="default"
+  				  pattern="${ivy.lib}/[artifact]-[revision].[ext]"/>
   </target>
 
   <target name="ivy-retrieve-test" depends="init,ivy-init">
+    <ivy:retrieve settingsRef="${ant.project.name}" type="jar" conf="test"
+                  pattern="${ivy.test.lib}/[artifact]-[revision].[ext]"/>
   </target>
 
 
