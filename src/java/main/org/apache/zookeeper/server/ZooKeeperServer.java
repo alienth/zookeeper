@@ -236,7 +236,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
      *  Restore sessions and data
      */
     public void loadData() throws IOException, InterruptedException {
-        zkDb.loadDataBase();
         setZxid(zkDb.loadDataBase());
         // Clean up dead sessions
         LinkedList<Long> deadSessions = new LinkedList<Long>();
@@ -357,14 +356,18 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
     }
     
-    public void startup() throws IOException, InterruptedException {
+    public void startdata() 
+    throws IOException, InterruptedException {
         //check to see if zkDb is not null
         if (zkDb == null) {
             zkDb = new ZKDatabase(this.txnLogFactory);
-        }
+        }  
         if (!zkDb.isInitialized()) {
             loadData();
         }
+    }
+    
+    public void startup() {        
         createSessionTracker();
         setupRequestProcessors();
 
