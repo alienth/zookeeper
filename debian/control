@@ -1,8 +1,7 @@
 Source: zookeeper
 Section: java
 Priority: optional
-Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-XSBC-Original-Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
+Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
 Uploaders: James Page <james.page@ubuntu.com>
 Homepage: http://hadoop.apache.org/zookeeper
 Vcs-Browser: http://git.debian.org/?p=pkg-java/zookeeper.git
@@ -10,10 +9,9 @@ Vcs-Git: git://git.debian.org/pkg-java/zookeeper.git
 Standards-Version: 3.9.2
 Build-Depends: debhelper (>= 7.4.11), javahelper (>= 0.28), default-jdk (>= 1:1.6),
  ant (>= 1.6.0), liblog4j1.2-java (>> 1.2.15-8), junit4, libxerces2-java,
- libjline-java, libnetty-java, javacc, default-jdk-doc, python-all-dev, python-support,
+ libjline-java, libnetty-java, javacc, default-jdk-doc, python-all-dev (>= 2.6.6-3~),
  libboost-dev, libxml2-dev, liblog4cxx10-dev, autoconf, help2man, libtool, automake,
  libcppunit-dev
-XS-Python-Version: all
 
 Package: libzookeeper-java
 Architecture: all

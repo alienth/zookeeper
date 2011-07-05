@@ -1,0 +1,18 @@
+Description: -Werror causes all warnings to be dealt with as errors
+ this breaks the build.
+Author: James Page <james.page@ubuntu.com>
+Forwarderd: not-needed
+
+Index: zookeeper/src/c/Makefile.am
+===================================================================
+--- zookeeper.orig/src/c/Makefile.am	2011-07-05 13:33:24.796548099 +0100
++++ zookeeper/src/c/Makefile.am	2011-07-05 13:33:36.236548092 +0100
+@@ -2,7 +2,7 @@
+ include $(top_srcdir)/aminclude.am
+ 
+ AM_CPPFLAGS = -I${srcdir}/include -I${srcdir}/tests -I${srcdir}/generated
+-AM_CFLAGS = -Wall -Werror 
++AM_CFLAGS = -Wall 
+ CXXFLAGS = -Wall -g $(USEIPV6)
+ 
+ LIB_LDFLAGS = -no-undefined -version-info 2

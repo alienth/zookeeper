@@ -6,7 +6,7 @@ export JAVA_HOME=/usr/lib/jvm/default-java/
 PYVERS := $(shell pyversions -vr)
 
 %:
-	dh --with javahelper $@
+	dh --with javahelper --with python2 $@
 
 override_dh_auto_build:
 	# TODO exclude the fatjar contrib from upstream tarball and include the rest contrib
