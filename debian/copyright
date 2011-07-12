@@ -9,7 +9,7 @@ License: Apache-2.0
 Files: src/contrib/zooinspector/src/java/com/*,
        debian/patches/add_jtoaster_source_to_zooinspector
 Copyright: Daniele Piras ("danielepiras80", no email).
-License: Apache-2.0 
+License: Apache-2.0
 
 Files: src/c/src/hashtable/*
 Copyright: 2002, 2004, Christopher Clark
@@ -17,7 +17,7 @@ License: BSD
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
   are met:
-  .  
+  .
   * Redistributions of source code must retain the above copyright
     notice, this list of conditions and the following disclaimer.
   .
