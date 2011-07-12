@@ -1,7 +1,7 @@
 Index: zookeeper/build.xml
 ===================================================================
---- zookeeper.orig/build.xml	2011-07-05 14:27:39.000000000 +0100
-+++ zookeeper/build.xml	2011-07-05 14:28:28.176546056 +0100
+--- zookeeper.orig/build.xml	2011-07-12 15:03:47.576170738 +0100
++++ zookeeper/build.xml	2011-07-12 15:03:55.006170734 +0100
 @@ -25,7 +25,7 @@
      <property environment="env"/>
      
@@ -57,8 +57,8 @@ Index: zookeeper/build.xml
              <classpath refid="java.classpath"/>
 Index: zookeeper/src/contrib/bookkeeper/build.xml
 ===================================================================
---- zookeeper.orig/src/contrib/bookkeeper/build.xml	2011-07-05 14:27:39.000000000 +0100
-+++ zookeeper/src/contrib/bookkeeper/build.xml	2011-07-05 14:28:00.966546073 +0100
+--- zookeeper.orig/src/contrib/bookkeeper/build.xml	2011-07-12 15:03:47.546170738 +0100
++++ zookeeper/src/contrib/bookkeeper/build.xml	2011-07-12 15:03:55.006170734 +0100
 @@ -34,7 +34,7 @@
  
    <target name="setjarname">
@@ -70,8 +70,8 @@ Index: zookeeper/src/contrib/bookkeeper/build.xml
    <target name="init" depends="checkMainCompiled, zookeeperbuildcontrib.init"/>
 Index: zookeeper/src/contrib/build-contrib.xml
 ===================================================================
---- zookeeper.orig/src/contrib/build-contrib.xml	2011-07-05 13:50:34.000000000 +0100
-+++ zookeeper/src/contrib/build-contrib.xml	2011-07-05 14:28:00.966546073 +0100
+--- zookeeper.orig/src/contrib/build-contrib.xml	2011-07-12 15:03:47.526170738 +0100
++++ zookeeper/src/contrib/build-contrib.xml	2011-07-12 15:03:55.006170734 +0100
 @@ -70,25 +70,14 @@
  
    <path id="classpath">
@@ -131,8 +131,8 @@ Index: zookeeper/src/contrib/build-contrib.xml
  
 Index: zookeeper/src/contrib/zooinspector/build.xml
 ===================================================================
---- zookeeper.orig/src/contrib/zooinspector/build.xml	2011-07-05 13:50:34.000000000 +0100
-+++ zookeeper/src/contrib/zooinspector/build.xml	2011-07-05 14:28:00.966546073 +0100
+--- zookeeper.orig/src/contrib/zooinspector/build.xml	2011-07-12 15:03:47.556170738 +0100
++++ zookeeper/src/contrib/zooinspector/build.xml	2011-07-12 15:04:31.996170711 +0100
 @@ -20,7 +20,7 @@
  
  
@@ -142,3 +142,20 @@ Index: zookeeper/src/contrib/zooinspector/build.xml
  	</target>
  
  	<target name="init" depends="checkMainCompiled, zookeeperbuildcontrib.init">
+@@ -41,7 +41,7 @@
+ 			<fileset file="${basedir}/lib/log4j.properties" />
+ 		</copy>
+ 		<copy todir="${build.dir}/lib">
+-			<fileset file="../../../build/zookeeper-3.3.1.jar" />
++			<fileset file="../../../build/zookeeper-3.3.3.jar" />
+ 		</copy>
+ 		<copy todir="${build.dir}">
+ 			<fileset dir="${basedir}" includes="*.*" excludes="build.xml,ivy.xml" />
+@@ -55,7 +55,6 @@
+ 		<jar jarfile="${jarname}">
+ 			<manifest>
+ 				<attribute name="Main-Class" value="org.apache.zookeeper.inspector.ZooInspector" />
+-				<attribute name="Class-Path" value="lib/log4j-1.2.15.jar lib/TableLayout-20050920.jar lib/zookeeper-3.3.1.jar lib/jToaster-1.0.4.jar lib" />
+ 				<attribute name="Built-By" value="${user.name}" />
+ 				<attribute name="Built-At" value="${build.time}" />
+ 				<attribute name="Built-On" value="${host.name}" />

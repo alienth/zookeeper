@@ -114,5 +114,5 @@ override_jh_depends:
 	true
 
 # some utf8 error? Don't need them anyway by now
-override_jh_classpath override_jh_manifest override_jh_exec:
-	true
+#override_jh_classpath override_jh_manifest override_jh_exec:
+#	true

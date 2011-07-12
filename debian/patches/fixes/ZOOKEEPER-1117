@@ -1,7 +1,8 @@
-Description: -Werror causes all warnings to be dealt with as errors
- this breaks the build with gcc >= 4.6.1
+Description: New warnings in gcc >= 4.6.1 breaks zookeeper build.
+ This patch is not the final solution, just a fix to workaround this
+ issue.
 Author: James Page <james.page@ubuntu.com>
-Forwarderd: https://issues.apache.org/jira/browse/ZOOKEEPER-1117
+Forwarded: https://issues.apache.org/jira/browse/ZOOKEEPER-1117
 
 Index: zookeeper/src/c/Makefile.am
 ===================================================================
