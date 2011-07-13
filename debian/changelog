@@ -1,4 +1,4 @@
-zookeeper (3.3.3+dfsg2-2) unstable; urgency=low
+zookeeper (3.3.3+dfsg2-1) unstable; urgency=low
 
   * Re-enable python 2.7 modules (Closes: #633690):
     - debian/control: X-Python-Version: >= 2.6
