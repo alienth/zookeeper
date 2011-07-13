@@ -1,4 +1,4 @@
-zookeeper (3.3.3+dfsg1-2) unstable; urgency=low
+zookeeper (3.3.3+dfsg2-2) unstable; urgency=low
 
   * Re-enable python 2.7 modules (Closes: #633690):
     - debian/control: X-Python-Version: >= 2.6
@@ -8,7 +8,7 @@ zookeeper (3.3.3+dfsg1-2) unstable; urgency=low
   * Purged additional non-DFSG files from upstream source:
     - src/java/test/data/* : invalid snapshot and upgrade testing data.
 
- -- James Page <james.page@ubuntu.com>  Wed, 13 Jul 2011 09:41:14 +0100
+ -- James Page <james.page@ubuntu.com>  Wed, 13 Jul 2011 10:01:47 +0100
 
 zookeeper (3.3.3+dfsg1-1) unstable; urgency=low
 
