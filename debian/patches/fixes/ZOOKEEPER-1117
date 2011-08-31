@@ -1,19 +1,41 @@
-Description: New warnings in gcc >= 4.6.1 breaks zookeeper build.
- This patch is not the final solution, just a fix to workaround this
- issue.
-Author: James Page <james.page@ubuntu.com>
-Forwarded: https://issues.apache.org/jira/browse/ZOOKEEPER-1117
+Description: Patch adapted from 3.4.x to fix new warnings that break
+ the build under gcc >= 4.6.1.
+Origin: https://issues.apache.org/jira/browse/ZOOKEEPER-1117
 
-Index: zookeeper/src/c/Makefile.am
+Index: zookeeper/src/c/src/zookeeper.c
 ===================================================================
---- zookeeper.orig/src/c/Makefile.am	2011-07-05 13:33:24.796548099 +0100
-+++ zookeeper/src/c/Makefile.am	2011-07-05 13:33:36.236548092 +0100
-@@ -2,7 +2,7 @@
- include $(top_srcdir)/aminclude.am
- 
- AM_CPPFLAGS = -I${srcdir}/include -I${srcdir}/tests -I${srcdir}/generated
--AM_CFLAGS = -Wall -Werror 
-+AM_CFLAGS = -Wall -Werror -Wno-error=unused-but-set-variable 
- CXXFLAGS = -Wall -g $(USEIPV6)
- 
- LIB_LDFLAGS = -no-undefined -version-info 2
+--- a/src/c/src/zookeeper.c	(revision 1155281)
++++ b/src/c/src/zookeeper.c	(working copy)
+@@ -462,7 +462,7 @@
+         *port_spec = '\0';
+         port_spec++;
+         port = strtol(port_spec, &end_port_spec, 0);
+-        if (!*port_spec || *end_port_spec) {
++        if (!*port_spec || *end_port_spec || port == 0) {
+             LOG_ERROR(("invalid port in %s", host));
+             errno=EINVAL;
+             rc=ZBADARGUMENTS;
+Index: zookeeper/src/c/src/cli.c
+===================================================================
+--- a/src/c/src/cli.c	(revision 1155281)
++++ b/src/c/src/cli.c	(working copy)
+@@ -581,12 +581,14 @@
+         FD_SET(0, &rfds);
+         rc = select(fd+1, &rfds, &wfds, &efds, &tv);
+         events = 0;
+-        if (FD_ISSET(fd, &rfds)) {
+-            events |= ZOOKEEPER_READ;
++        if (rc > 0) {
++            if (FD_ISSET(fd, &rfds)) {
++           	    events |= ZOOKEEPER_READ;
++            }
++            if (FD_ISSET(fd, &wfds)) {
++                events |= ZOOKEEPER_WRITE;
++            }
+         }
+-        if (FD_ISSET(fd, &wfds)) {
+-            events |= ZOOKEEPER_WRITE;
+-        }
+         if(batchMode && processed==0){
+           //batch mode
+           processline(cmd);

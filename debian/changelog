@@ -1,3 +1,14 @@
+zookeeper (3.3.3+dfsg2-2) unstable; urgency=low
+
+  * Updated patch for ZOOKEEPER-1117 with fixes accepted into
+    zookeeper 3.4.0 upstream; should also resolve FTBFS on ia64.
+  * Close RFH from original maintainer (Closes: #602694).
+  * debian/zookeeper.cron.daily: handle return code of 1 so daily cron job
+    does not produce error emails when the package is removed but not
+    purged (Closes: #582757). Thanks to Clint Byrum for this fix.
+
+ -- James Page <james.page@ubuntu.com>  Wed, 31 Aug 2011 08:51:04 +0100
+
 zookeeper (3.3.3+dfsg2-1) unstable; urgency=low
 
   * Re-enable python 2.7 modules (Closes: #633690):
