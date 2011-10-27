@@ -16,20 +16,23 @@ override_dh_auto_build:
 	# see: https://issues.apache.org/jira/browse/ZOOKEEPER-537
 	ant -Dversion=$(DEB_UPSTREAM_VERSION) -DlastRevision=-1 javadoc javadoc-dev jar
 
-	# compile C library
+	# Compile C library
 	cd src/c && autoreconf -i
 	cd src/c && ./configure --prefix=/usr
 	$(MAKE) -C src/c
 
-	# compile contribs
+	# Compile contribs - bookkeeper
 	cd src/contrib && ant -Dversion=$(DEB_UPSTREAM_VERSION) -DlastRevision=-1 -Ddest.dir=../../build/zookeeper -Divy.jar.exists=true -Divy.initialized=true -Dcontribfilesetincludes="bookkeeper/build.xml"
+	# Compile contribs - zooinspector
 	cd src/contrib && ant -Dversion=$(DEB_UPSTREAM_VERSION) -DlastRevision=-1 -Ddest.dir=../../build/zookeeper -Divy.jar.exists=true -Divy.initialized=true -Dcontribfilesetincludes="zooinspector/build.xml"
 
+	# Build Python Bindings
 	cd src/contrib/zkpython && \
 	  for pv in $(PYVERS); do \
 	    python$$pv src/python/setup.py build --build-base=$(CURDIR)/build ;\
 	  done
-	# compile zktreeutil
+
+	# Compile zktreeutil and generate man page
 	cd src/contrib/zktreeutil && autoreconf -if && ./configure && make
 	LD_LIBRARY_PATH=src/c/.libs help2man -N --version-string=0.0 src/contrib/zktreeutil/src/zktreeutil >zktreeutil.man
 
@@ -42,15 +45,13 @@ override_dh_install:
 	  done
 	dh_install
 
-#override_jh_build:
-#	jh_build --no-javadoc
-#	javadoc -link /usr/share/doc/default-jdk-doc/api/ -classpath ${CLASSPATH}:debian/lib -d debian/_jh_build.javadoc/api -quiet -sourcepath src/java/main:src/contrib/bookkeeper/src/java -subpackages org.apache.jute:org.apache.zookeeper:org.apache.bookkeeper
-
+ifeq (,$(findstring nocheck, $(DEB_BUILD_OPTIONS)))
 override_dh_auto_test:
 	# src/c/tests/TestClient.cc:298: Assertion: equality assertion failed [Expected: -101, Actual  : -4]
 	#ant -propertyfile debian/ant.properties -buildfile debian/build-override.xml test-core
 	#Testsuite runs ~15 min on my machine. Seems too much for the Debian build daemons
 	#ant -propertyfile debian/ant.properties -buildfile debian/build-override.xml test-core-java
+endif
 
 override_dh_clean:
 	dh_clean --exclude=src/java \
@@ -58,6 +59,7 @@ override_dh_clean:
              --exclude=src/c \
              --exclude=src/reciped
 	jh_clean
+	rm -rf debian/*.upstart
 
 # the original build.xml deletes too much
 override_dh_auto_clean:
@@ -93,32 +95,22 @@ override_dh_auto_clean:
 	rm -rf src/c/configure
 	rm -rf src/c/ltmain.sh
 
+ifeq (,$(findstring nodocs, $(DEB_BUILD_OPTIONS)))
 override_dh_installdocs:
 	dh_installdocs --link-doc=libzookeeper-java \
 	  -plibzookeeper-java -pzookeeper -pzookeeperd -plibzookeeper-java-doc
 	dh_installdocs --link-doc=libzookeeper2 \
 	  -plibzookeeper2 -plibzookeeper-dev -pzookeeper-bin -ppython-zookeeper
+endif
 
-# javahelper can't install two javadoc dirs per package
-override_jh_installjavadoc:
-	true
-
+# Install init script for Debian and upstart for Ubuntu
 override_dh_installinit:
 	if dpkg-vendor --derives-from ubuntu ; then \
 		cp debian/zookeeperd.upstart.in debian/zookeeperd.upstart ; \
 	fi
 	dh_installinit -d
 
-# jh_depends fails for me:
-# - I can not specify, that I need a minimal version of log4j
-# - It unnecesseraly pulls libjaxp1.3-java in Depends, although this is only a
-#   transitiv dependency of libxerces2-java
-override_jh_depends:
-	true
-
-# some utf8 error? Don't need them anyway by now
-#override_jh_classpath override_jh_manifest override_jh_exec:
-#	true
+# init/upstart require difference dependencies for zookeeperd
 override_dh_gencontrol:
 	if dpkg-vendor --derives-from ubuntu ; then \
         dh_gencontrol -- -T$(CURDIR)/debian/ubuntu_control_vars ; \
