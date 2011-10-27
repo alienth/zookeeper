@@ -65,7 +65,7 @@ Description: High-performance coordination service for distributed applications
 
 Package: zookeeperd
 Architecture: all
-Depends: lsb-base (>= 3.2-14), zookeeper (= ${binary:Version}), ${misc:Depends}
+Depends: ${zookeeperd-deps}, zookeeper (= ${binary:Version}), ${misc:Depends}
 Description: Init control scripts for zookeeper 
  ZooKeeper is a centralized, reliable, service for maintaining configuration
  information, naming, providing distributed synchronization, and group

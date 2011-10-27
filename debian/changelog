@@ -1,3 +1,13 @@
+zookeeper (3.3.3+dfsg2-3) UNRELEASED; urgency=low
+
+  * Added support for upstart under Ubuntu (LP: #862762):
+    - d/rules,d/zookeeperd.upstart.in: Detect Ubuntu and swap in provided 
+      upstart configuration if required.
+    - d/ubuntu|debian_control_vars,d/control,d/rules: Provide different Depends 
+      for zookeeperd package when building under Ubuntu/Debian.
+
+ -- James Page <james.page@ubuntu.com>  Thu, 27 Oct 2011 10:23:37 +0100
+
 zookeeper (3.3.3+dfsg2-2) unstable; urgency=low
 
   * Updated patch for ZOOKEEPER-1117 with fixes accepted into

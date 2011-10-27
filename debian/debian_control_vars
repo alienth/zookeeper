@@ -1,0 +1,1 @@
+zookeeperd-deps= lsb-base (>= 3.2-14) 

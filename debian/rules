@@ -104,6 +104,9 @@ override_jh_installjavadoc:
 	true
 
 override_dh_installinit:
+	if dpkg-vendor --derives-from ubuntu ; then \
+		cp zookeeperd.upstart.in zookeeperd.upstart ; \
+	fi
 	dh_installinit -d
 
 # jh_depends fails for me:
@@ -116,3 +119,9 @@ override_jh_depends:
 # some utf8 error? Don't need them anyway by now
 #override_jh_classpath override_jh_manifest override_jh_exec:
 #	true
+override_dh_gencontrol:
+	if dpkg-vendor --derives-from ubuntu ; then \
+        dh_gencontrol -- -T$(CURDIR)/debian/ubuntu_control_vars ; \
+    else \
+        dh_gencontrol -- -T$(CURDIR)/debian/debian_control_vars ; \
+    fi
