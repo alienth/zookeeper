@@ -9,9 +9,10 @@ Vcs-Git: git://git.debian.org/pkg-java/zookeeper.git
 Standards-Version: 3.9.2
 Build-Depends:
  ant (>= 1.6.0),
+ ant-optional,
  autoconf,
  automake,
- debhelper (>= 7.4.11),
+ debhelper (>= 8.9.7),
  default-jdk (>= 1:1.6),
  default-jdk-doc,
  help2man,

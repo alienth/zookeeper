@@ -5,8 +5,15 @@ zookeeper (3.3.3+dfsg2-3) UNRELEASED; urgency=low
       upstart configuration if required.
     - d/ubuntu|debian_control_vars,d/control,d/rules: Provide different Depends 
       for zookeeperd package when building under Ubuntu/Debian.
+  * Enabled C and Java test suites:
+    - d/control,d/compat: Bumped debhelper compat level to 8 to allow 
+      arch/indep overrides.
+    - d/rules: Enable test suites for -arch and -indep builds.
+    - d/patches/debian/patch-build-system: Patch unit testing to exclude 
+      InvalidSnapshot and Upgrade tests (non-free data) and to pickup 
+      junit4 from system library.
 
- -- James Page <james.page@ubuntu.com>  Thu, 27 Oct 2011 10:23:37 +0100
+ -- James Page <james.page@ubuntu.com>  Thu, 27 Oct 2011 12:57:26 +0100
 
 zookeeper (3.3.3+dfsg2-2) unstable; urgency=low
 

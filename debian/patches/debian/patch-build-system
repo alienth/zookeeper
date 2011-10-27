@@ -1,7 +1,13 @@
+Description: Patches to upstream build system to disable use of ivy,
+ use jar files from /usr/share/java and enable the relevant bits of the
+ test suite for execution during build.
+Author: James Page <james.page@ubuntu.com>, Thomas Koch <thomas@koch.ro>
+Forwarded: not-needed
+
 Index: zookeeper/build.xml
 ===================================================================
---- zookeeper.orig/build.xml	2011-07-12 15:03:47.576170738 +0100
-+++ zookeeper/build.xml	2011-07-12 15:03:55.006170734 +0100
+--- zookeeper.orig/build.xml	2011-10-27 12:56:26.256766856 +0100
++++ zookeeper/build.xml	2011-10-27 13:34:38.167607772 +0100
 @@ -25,7 +25,7 @@
      <property environment="env"/>
      
@@ -11,7 +17,7 @@ Index: zookeeper/build.xml
      <property name="revision.dir" value="${basedir}/.revision" />
      <property name="revision.properties" value="revision.properties" />
      <property file="${basedir}/src/java/${revision.properties}" />
-@@ -169,21 +169,11 @@
+@@ -169,27 +169,17 @@
      <path id="java.classpath">
        <pathelement location="${build.classes}"/>
        <!-- allow the user to override (e.g. if there are local versions) -->
@@ -37,6 +43,14 @@ Index: zookeeper/build.xml
      </path>
  
      <path id="test.java.classpath">
+       <pathelement location="${test.java.classes}" />
+-      <fileset dir="${ivy.test.lib}">
+-        <include name="**/*.jar" />
++      <fileset dir="/usr/share/java">
++        <include name="junit4.jar" />
+       </fileset>
+       <path refid="java.classpath"/>
+     </path>
 @@ -223,7 +213,7 @@
                    targetfile="${src_generated.dir}/.generated"/>
      </target>
@@ -55,10 +69,51 @@ Index: zookeeper/build.xml
          <javac srcdir="${java.src.dir}" destdir="${build.classes}" 
                 target="${javac.target}" debug="on">
              <classpath refid="java.classpath"/>
+@@ -334,7 +324,7 @@
+         </javac>
+     </target>
+ 
+-    <target name="compile-test" depends="ivy-retrieve-test,compile">
++    <target name="compile-test" depends="compile">
+       <mkdir dir="${test.java.classes}"/>
+       <javac srcdir="${test.src.dir}" destdir="${test.java.classes}"
+              target="${javac.target}" debug="on">
+@@ -769,21 +759,10 @@
+     <target name="test-init" depends="jar,compile-test">
+         <delete dir="${test.log.dir}" />
+         <delete dir="${test.tmp.dir}" />
+-        <delete dir="${test.data.upgrade.dir}" />
+-        <delete dir="${test.data.invalid.dir}" />
+         <delete dir="${test.data.dir}" />
+         <mkdir dir="${test.log.dir}" />
+         <mkdir dir="${test.tmp.dir}" />
+         <mkdir dir="${test.data.dir}" />
+-        <mkdir dir="${test.data.upgrade.dir}" />
+-        <mkdir dir="${test.data.invalid.dir}" />
+-        <copy todir="${test.data.upgrade.dir}">
+-            <fileset dir="${basedir}/src/java/test/data/upgrade"/>
+-        </copy>
+-        <copy todir="${test.data.invalid.dir}">
+-            <fileset dir="${basedir}/src/java/test/data/invalidsnap"/>
+-        </copy>
+-       
+     </target>
+ 
+     <condition property="quicktest">
+@@ -836,6 +815,9 @@
+           <batchtest todir="${test.log.dir}" if="fulltest">
+             <fileset dir="${test.src.dir}">
+               <include name="**/*${test.category}Test.java"/>
++              <exclude name="**/test/UpgradeTest.java"/>
++              <exclude name="**/test/InvalidSnapshotTest.java"/>
++              <exclude name="**/VerGenTest.java"/>
+             </fileset>
+           </batchtest>
+           <batchtest todir="${test.log.dir}" if="testcase">
 Index: zookeeper/src/contrib/bookkeeper/build.xml
 ===================================================================
---- zookeeper.orig/src/contrib/bookkeeper/build.xml	2011-07-12 15:03:47.546170738 +0100
-+++ zookeeper/src/contrib/bookkeeper/build.xml	2011-07-12 15:03:55.006170734 +0100
+--- zookeeper.orig/src/contrib/bookkeeper/build.xml	2011-10-27 12:56:26.208766699 +0100
++++ zookeeper/src/contrib/bookkeeper/build.xml	2011-10-27 12:57:05.000000000 +0100
 @@ -34,7 +34,7 @@
  
    <target name="setjarname">
@@ -70,8 +125,8 @@ Index: zookeeper/src/contrib/bookkeeper/build.xml
    <target name="init" depends="checkMainCompiled, zookeeperbuildcontrib.init"/>
 Index: zookeeper/src/contrib/build-contrib.xml
 ===================================================================
---- zookeeper.orig/src/contrib/build-contrib.xml	2011-07-12 15:03:47.526170738 +0100
-+++ zookeeper/src/contrib/build-contrib.xml	2011-07-12 15:03:55.006170734 +0100
+--- zookeeper.orig/src/contrib/build-contrib.xml	2011-10-27 12:56:26.188766632 +0100
++++ zookeeper/src/contrib/build-contrib.xml	2011-10-27 12:57:05.000000000 +0100
 @@ -70,25 +70,14 @@
  
    <path id="classpath">
@@ -131,8 +186,8 @@ Index: zookeeper/src/contrib/build-contrib.xml
  
 Index: zookeeper/src/contrib/zooinspector/build.xml
 ===================================================================
---- zookeeper.orig/src/contrib/zooinspector/build.xml	2011-07-12 15:03:47.556170738 +0100
-+++ zookeeper/src/contrib/zooinspector/build.xml	2011-07-12 15:04:31.996170711 +0100
+--- zookeeper.orig/src/contrib/zooinspector/build.xml	2011-10-27 12:56:26.236766791 +0100
++++ zookeeper/src/contrib/zooinspector/build.xml	2011-10-27 12:57:05.000000000 +0100
 @@ -20,7 +20,7 @@
  
  
