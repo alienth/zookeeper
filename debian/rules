@@ -105,7 +105,7 @@ override_jh_installjavadoc:
 
 override_dh_installinit:
 	if dpkg-vendor --derives-from ubuntu ; then \
-		cp zookeeperd.upstart.in zookeeperd.upstart ; \
+		cp debian/zookeeperd.upstart.in debian/zookeeperd.upstart ; \
 	fi
 	dh_installinit -d
 
