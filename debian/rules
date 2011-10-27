@@ -58,7 +58,7 @@ override_dh_auto_test-arch:
 
 override_dh_auto_test-indep:
 	# Run core Java test suite against zookeeper
-	ant -Dversion=$(DEB_UPSTREAM_VERSION) -DlastRevision=-1 -Dtestcase=VerGenTest -d test-core-java
+	ant -Dversion=$(DEB_UPSTREAM_VERSION) -DlastRevision=-1 test-core-java
 endif
 
 override_dh_clean:
