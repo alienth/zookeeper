@@ -20,6 +20,7 @@ zookeeper (3.3.4+dfsg1-1) unstable; urgency=low
 
   [ Damien Raude-Morvan ]
   * Add DMUA flag for James Page.
+  * Build-Depends on procps for test suite.
 
  -- James Page <james.page@ubuntu.com>  Wed, 30 Nov 2011 10:55:30 +0000
 
