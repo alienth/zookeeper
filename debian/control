@@ -30,6 +30,7 @@ Build-Depends:
  libxml2-dev,
  python-all-dev (>= 2.6.6-3~)
 X-Python-Version: >= 2.6
+DM-Upload-Allowed: yes
 
 Package: libzookeeper-java
 Architecture: all
