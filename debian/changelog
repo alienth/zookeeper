@@ -15,6 +15,7 @@ zookeeper (3.3.4+dfsg1-1) unstable; urgency=low
     - d/patches/debian/patch-build-system: Patch unit testing to exclude 
       InvalidSnapshot and Upgrade tests (non-free data) and to pickup 
       junit4 from system library.
+  * Close RFH for this package (LP: #579791).
 
  -- James Page <james.page@ubuntu.com>  Wed, 30 Nov 2011 10:55:30 +0000
 
