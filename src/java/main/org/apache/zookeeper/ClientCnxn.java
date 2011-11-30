@@ -31,6 +31,7 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -964,21 +965,23 @@ public class ClientCnxn {
             synchronized (outgoingQueue) {
                 // We add backwards since we are pushing into the front
                 // Only send if there's a pending watch
-                if (!disableAutoWatchReset &&
-                        (!zooKeeper.getDataWatches().isEmpty()
-                         || !zooKeeper.getExistWatches().isEmpty()
-                         || !zooKeeper.getChildWatches().isEmpty()))
-                {
-                    SetWatches sw = new SetWatches(lastZxid,
-                            zooKeeper.getDataWatches(),
-                            zooKeeper.getExistWatches(),
-                            zooKeeper.getChildWatches());
-                    RequestHeader h = new RequestHeader();
-                    h.setType(ZooDefs.OpCode.setWatches);
-                    h.setXid(-8);
-                    Packet packet = new Packet(h, new ReplyHeader(), sw, null, null,
+                if (!disableAutoWatchReset) {
+                    List<String> dataWatches = zooKeeper.getDataWatches();
+                    List<String> existWatches = zooKeeper.getExistWatches();
+                    List<String> childWatches = zooKeeper.getChildWatches();
+                    if (!dataWatches.isEmpty()
+                                || !existWatches.isEmpty() || !childWatches.isEmpty()) {
+                        SetWatches sw = new SetWatches(lastZxid,
+                                prependChroot(dataWatches),
+                                prependChroot(existWatches),
+                                prependChroot(childWatches));
+                        RequestHeader h = new RequestHeader();
+                        h.setType(ZooDefs.OpCode.setWatches);
+                        h.setXid(-8);
+                        Packet packet = new Packet(h, new ReplyHeader(), sw, null, null,
                                 null);
-                    outgoingQueue.addFirst(packet);
+                        outgoingQueue.addFirst(packet);
+                    }
                 }
 
                 for (AuthData id : authInfo) {
@@ -997,6 +1000,23 @@ public class ClientCnxn {
                         + ((SocketChannel)sockKey.channel())
                             .socket().getRemoteSocketAddress());
             }
+        }
+
+        private List<String> prependChroot(List<String> paths) {
+            if (chrootPath != null && !paths.isEmpty()) {
+                for (int i = 0; i < paths.size(); ++i) {
+                    String clientPath = paths.get(i);
+                    String serverPath;
+                    // handle clientPath = "/"
+                    if (clientPath.length() == 1) {
+                        serverPath = chrootPath;
+                    } else {
+                        serverPath = chrootPath + clientPath;
+                    }
+                    paths.set(i, serverPath);
+                }
+            }
+            return paths;
         }
 
         private void sendPing() {
@@ -1046,9 +1066,16 @@ public class ClientCnxn {
             sock.socket().setTcpNoDelay(true);
             setName(getName().replaceAll("\\(.*\\)",
                     "(" + addr.getHostName() + ":" + addr.getPort() + ")"));
-            sockKey = sock.register(selector, SelectionKey.OP_CONNECT);
-            if (sock.connect(addr)) {
-                primeConnection(sockKey);
+            try {
+                sockKey = sock.register(selector, SelectionKey.OP_CONNECT);
+                boolean immediateConnect = sock.connect(addr);
+                if (immediateConnect) {
+                    primeConnection(sockKey);
+                }
+            } catch (IOException e) {
+                LOG.error("Unable to open socket to " + addr);
+                sock.close();
+                throw e;
             }
             initialized = false;
 
@@ -1140,7 +1167,7 @@ public class ClientCnxn {
                         }
                     }
                     selected.clear();
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     if (closing) {
                         if (LOG.isDebugEnabled()) {
                             // closing so this is expected
