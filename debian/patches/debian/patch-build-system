@@ -6,12 +6,12 @@ Forwarded: not-needed
 
 Index: zookeeper/build.xml
 ===================================================================
---- zookeeper.orig/build.xml	2011-10-27 12:56:26.256766856 +0100
-+++ zookeeper/build.xml	2011-10-27 13:34:38.167607772 +0100
+--- zookeeper.orig/build.xml	2011-11-30 10:50:46.000000000 +0000
++++ zookeeper/build.xml	2011-11-30 10:51:59.469098290 +0000
 @@ -25,7 +25,7 @@
      <property environment="env"/>
      
-     <property name="version" value="3.3.3" />
+     <property name="version" value="3.3.4" />
 -    <property name="final.name" value="${name}-${version}"/>
 +    <property name="final.name" value="${name}"/>
      <property name="revision.dir" value="${basedir}/.revision" />
@@ -112,8 +112,8 @@ Index: zookeeper/build.xml
            <batchtest todir="${test.log.dir}" if="testcase">
 Index: zookeeper/src/contrib/bookkeeper/build.xml
 ===================================================================
---- zookeeper.orig/src/contrib/bookkeeper/build.xml	2011-10-27 12:56:26.208766699 +0100
-+++ zookeeper/src/contrib/bookkeeper/build.xml	2011-10-27 12:57:05.000000000 +0100
+--- zookeeper.orig/src/contrib/bookkeeper/build.xml	2011-11-23 15:16:05.000000000 +0000
++++ zookeeper/src/contrib/bookkeeper/build.xml	2011-11-30 10:51:34.325184751 +0000
 @@ -34,7 +34,7 @@
  
    <target name="setjarname">
@@ -125,8 +125,8 @@ Index: zookeeper/src/contrib/bookkeeper/build.xml
    <target name="init" depends="checkMainCompiled, zookeeperbuildcontrib.init"/>
 Index: zookeeper/src/contrib/build-contrib.xml
 ===================================================================
---- zookeeper.orig/src/contrib/build-contrib.xml	2011-10-27 12:56:26.188766632 +0100
-+++ zookeeper/src/contrib/build-contrib.xml	2011-10-27 12:57:05.000000000 +0100
+--- zookeeper.orig/src/contrib/build-contrib.xml	2011-11-23 15:16:05.000000000 +0000
++++ zookeeper/src/contrib/build-contrib.xml	2011-11-30 10:51:34.325184751 +0000
 @@ -70,25 +70,14 @@
  
    <path id="classpath">
@@ -186,8 +186,8 @@ Index: zookeeper/src/contrib/build-contrib.xml
  
 Index: zookeeper/src/contrib/zooinspector/build.xml
 ===================================================================
---- zookeeper.orig/src/contrib/zooinspector/build.xml	2011-10-27 12:56:26.236766791 +0100
-+++ zookeeper/src/contrib/zooinspector/build.xml	2011-10-27 12:57:05.000000000 +0100
+--- zookeeper.orig/src/contrib/zooinspector/build.xml	2011-11-23 15:16:05.000000000 +0000
++++ zookeeper/src/contrib/zooinspector/build.xml	2011-11-30 10:51:34.325184751 +0000
 @@ -20,7 +20,7 @@
  
  

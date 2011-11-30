@@ -1,5 +1,8 @@
-zookeeper (3.3.3+dfsg2-3) UNRELEASED; urgency=low
+zookeeper (3.3.4+dfsg1-1) unstable; urgency=low
 
+  * New upstream release:
+    - d/patches/fixes/ZOOKEEPER-1117: Dropped - fix included upstream.
+    - Refreshed patches.
   * Added support for upstart under Ubuntu (LP: #862762):
     - d/rules,d/zookeeperd.upstart.in: Detect Ubuntu and swap in provided 
       upstart configuration if required.
@@ -13,7 +16,7 @@ zookeeper (3.3.3+dfsg2-3) UNRELEASED; urgency=low
       InvalidSnapshot and Upgrade tests (non-free data) and to pickup 
       junit4 from system library.
 
- -- James Page <james.page@ubuntu.com>  Thu, 27 Oct 2011 12:57:26 +0100
+ -- James Page <james.page@ubuntu.com>  Wed, 30 Nov 2011 10:55:30 +0000
 
 zookeeper (3.3.3+dfsg2-2) unstable; urgency=low
 
