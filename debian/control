@@ -12,7 +12,7 @@ Build-Depends:
  ant-optional,
  autoconf,
  automake,
- debhelper (>= 8.9.7),
+ debhelper (>= 8.9.7~),
  default-jdk (>= 1:1.6),
  default-jdk-doc,
  help2man,
@@ -41,7 +41,7 @@ Depends:
  libnetty-java,
  libxerces2-java,
  ${misc:Depends}
-Description: Core Java libraries for zookeeper 
+Description: Core Java libraries for zookeeper
  ZooKeeper is a centralized, reliable, service for maintaining configuration
  information, naming, providing distributed synchronization, and group
  services. All of these kinds of services are used in some form or another by
@@ -68,8 +68,8 @@ Description: High-performance coordination service for distributed applications
 
 Package: zookeeperd
 Architecture: all
-Depends: ${zookeeperd-deps}, zookeeper (= ${binary:Version}), ${misc:Depends}
-Description: Init control scripts for zookeeper 
+Depends: zookeeper (= ${binary:Version}), ${misc:Depends}, ${zookeeperd-deps}
+Description: Init control scripts for zookeeper
  ZooKeeper is a centralized, reliable, service for maintaining configuration
  information, naming, providing distributed synchronization, and group
  services. All of these kinds of services are used in some form or another by
@@ -88,34 +88,87 @@ Description: API Documentation for zookeeper
  services. All of these kinds of services are used in some form or another by
  distributed applications.
 
-Package: libzookeeper2
+Package: libzookeeper-mt2
 Architecture: any
 Section: libs
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${misc:Depends}, ${shlibs:Depends}
-Description: C bindings for zookeeper
+Description: Multi threaded C bindings for zookeeper
  ZooKeeper is a centralized, reliable, service for maintaining configuration
  information, naming, providing distributed synchronization, and group
  services. All of these kinds of services are used in some form or another by
  distributed applications.
  .
- This package contains the runtime files for the C bindings.
+ This package contains the multi-threaded libraries for the C bindings.
 
-Package: libzookeeper-dev
+Package: libzookeeper-st2
+Architecture: any
+Section: libs
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Single threaded C bindings for zookeeper
+ ZooKeeper is a centralized, reliable, service for maintaining configuration
+ information, naming, providing distributed synchronization, and group
+ services. All of these kinds of services are used in some form or another by
+ distributed applications.
+ .
+ This package contains the single-threaded libraries for the C bindings.
+
+Package: libzookeeper2
+Architecture: any
+Priority: extra
+Section: oldlibs
+Depends: libzookeeper-mt2 (= ${binary:Version}), ${misc:Depends}
+Description: C bindings for zookeeper - transitional package
+ ZooKeeper is a centralized, reliable, service for maintaining configuration
+ information, naming, providing distributed synchronization, and group
+ services. All of these kinds of services are used in some form or another by
+ distributed applications.
+ .
+ Transitional package for renaming of libzookeeper2 -> libzookeeper-mt2.
+
+Package: libzookeeper-mt-dev
 Architecture: any
 Section: libdevel
-Depends: libzookeeper2 (= ${binary:Version}), ${misc:Depends}, ${shlibs:Depends}
-Description: Development files for zookeeper C bindings
+Replaces: libzookeeper-dev
+Provides: libzookeeper-dev
+Depends:
+ libzookeeper-mt2 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends}
+Conflicts: libzookeeper-dev
+Description: Development files for multi threaded zookeeper C bindings
  ZooKeeper is a centralized, reliable, service for maintaining configuration
  information, naming, providing distributed synchronization, and group
  services. All of these kinds of services are used in some form or another by
  distributed applications.
  .
- This package contains the development files for the C bindings.
+ This package contains the development files for the multi threaded C bindings.
+
+Package: libzookeeper-st-dev
+Architecture: any
+Section: libdevel
+Replaces: libzookeeper-dev
+Provides: libzookeeper-dev
+Depends:
+ libzookeeper-st2 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends}
+Conflicts: libzookeeper-dev
+Description: Development files for single threaded zookeeper C bindings
+ ZooKeeper is a centralized, reliable, service for maintaining configuration
+ information, naming, providing distributed synchronization, and group
+ services. All of these kinds of services are used in some form or another by
+ distributed applications.
+ .
+ This package contains the development files for the single threaded C bindings.
 
 Package: zookeeper-bin
 Architecture: any
 Section: misc
-Depends: libzookeeper2 (= ${binary:Version}), ${misc:Depends}, ${shlibs:Depends}
+Depends: libzookeeper-mt2 (= ${binary:Version}), ${misc:Depends}, ${shlibs:Depends}
 Description: Command line utilities for zookeeper
  ZooKeeper is a centralized, reliable, service for maintaining configuration
  information, naming, providing distributed synchronization, and group
@@ -131,7 +184,7 @@ Architecture: any
 Section: python
 XB-Python-Version: ${python:Versions}
 Depends:
- libzookeeper2 (= ${binary:Version}),
+ libzookeeper-mt2 (= ${binary:Version}),
  ${misc:Depends},
  ${python:Depends},
  ${shlibs:Depends}

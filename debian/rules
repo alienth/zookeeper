@@ -4,6 +4,7 @@ export JAVA_HOME=/usr/lib/jvm/default-java
 
 PYVERS := $(shell pyversions -vr)
 DEB_UPSTREAM_VERSION=$(shell dpkg-parsechangelog | sed -rne 's,^Version: ([^+]+).*,\1,p')
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 
 %:
 	dh $@ --with javahelper --with python2
@@ -18,7 +19,7 @@ override_dh_auto_build:
 
 	# Compile C library
 	cd src/c && autoreconf -i
-	cd src/c && ./configure --prefix=/usr
+	cd src/c && ./configure --prefix=/usr --libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH)
 	$(MAKE) -C src/c
 
 	# Compile contribs - bookkeeper
@@ -33,7 +34,7 @@ override_dh_auto_build:
 	  done
 
 	# Compile zktreeutil and generate man page
-	cd src/contrib/zktreeutil && autoreconf -if && ./configure && make
+	cd src/contrib/zktreeutil && autoreconf -if && ./configure --libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH) && make
 	LD_LIBRARY_PATH=src/c/.libs help2man -N --version-string=0.0 src/contrib/zktreeutil/src/zktreeutil >zktreeutil.man
 
 override_dh_install:
@@ -43,6 +44,12 @@ override_dh_install:
 	    python$$pv src/python/setup.py build --build-base=$(CURDIR)/build \
 	               install --root=$(CURDIR)/debian/tmp --install-layout=deb ;\
 	  done
+	# Generate install files for Multiarch capability
+	for install in libzookeeper-mt2 libzookeeper-st2 \
+				   libzookeeper-st-dev libzookeeper-mt-dev; do \
+		sed -e 's/__ARCH__/$(DEB_HOST_MULTIARCH)/g' debian/$$install.install.in \
+			> debian/$$install.install; \
+	done
 	dh_install
 
 #ifeq (,$(findstring nocheck, $(DEB_BUILD_OPTIONS)))
@@ -68,6 +75,11 @@ override_dh_clean:
              --exclude=src/reciped
 	jh_clean
 	rm -rf debian/*.upstart
+	# Clean generated install files
+	for install in libzookeeper-mt2 libzookeeper-st2 \
+				   libzookeeper-st-dev libzookeeper-mt-dev; do \
+		[ ! -f debian/$$install.install ] || rm debian/$$install.install; \
+	done
 
 # the original build.xml deletes too much
 override_dh_auto_clean:
@@ -108,8 +120,11 @@ ifeq (,$(findstring nodocs, $(DEB_BUILD_OPTIONS)))
 override_dh_installdocs:
 	dh_installdocs --link-doc=libzookeeper-java \
 	  -plibzookeeper-java -pzookeeper -pzookeeperd -plibzookeeper-java-doc
-	dh_installdocs --link-doc=libzookeeper2 \
-	  -plibzookeeper2 -plibzookeeper-dev -pzookeeper-bin -ppython-zookeeper
+	dh_installdocs --link-doc=libzookeeper-mt2 \
+	  -plibzookeeper-mt2 -plibzookeeper-mt-dev -pzookeeper-bin \
+      -ppython-zookeeper
+	dh_installdocs --link-doc=libzookeeper-st2 \
+	  -plibzookeeper-st2 -plibzookeeper-st-dev
 endif
 
 # Install init script for Debian and upstart for Ubuntu
