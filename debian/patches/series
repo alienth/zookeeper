@@ -1,4 +1,5 @@
 debian/add_jtoaster_source_to_zooinspector
 debian/patch-build-system
+debian/disable-cygwin-detection
 fixes/ZOOKEEPER-705
 fixes/ZOOKEEPER-1033
