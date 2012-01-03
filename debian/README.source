@@ -1,6 +1,9 @@
+Upstream tarball
+----------------
+
 The command used to filter and import the upstream tarball was:
 
-VERSION=3.3.1
+VERSION=3.3.4
 git-import-orig --pristine-tar --filter-pristine-tar --no-merge --upstream-version=$VERSION+dfsg1 \
                 --filter="*.jar" \
                 --filter="Makefile.in" \
@@ -19,3 +22,9 @@ git-import-orig --pristine-tar --filter-pristine-tar --no-merge --upstream-versi
                 --filter="zookeeper-$VERSION/src/c/generated" \
                 --filter="zookeeper-$VERSION/src/java/main/org/apache/jute/compiler/generated/*.java" \
                 --filter="zookeeper-$VERSION/src/java/generated" <tarball>
+
+RESTful support
+---------------
+
+The contrib rest could not be compiled since Debian misses the dependency
+https://grizzly.dev.java.net/

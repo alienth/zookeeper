@@ -90,9 +90,6 @@ override_dh_auto_clean:
 	rm -rf src/java/generated
 	rm -rf src/java/main/org/apache/jute/compiler/generated/*.java
 	rm -f zookeeper*.jar
-	#The following line caused lintian tag debian-rules-ignores-make-clean-error
-	#-$(MAKE) -C src/c distclean
-	#replaced by
 	[ ! -f src/c/Makefile ] || $(MAKE) -C src/c distclean
 	rm -f src/c/config.log src/c/config.status
 	[ ! -f src/contrib/zktreeutil/Makefile ] || $(MAKE) -C src/contrib/zktreeutil distclean
