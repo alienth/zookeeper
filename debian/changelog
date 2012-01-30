@@ -5,7 +5,7 @@ zookeeper (3.3.4+dfsg1-3) unstable; urgency=low
       Thanks to Clint Byrum for this fix.
     - Enable C and Java test suites:
       - d/patches/fixes/ZOOKEEPER-1374: Use __sync_* primitives
-        instead of ASM code when avaliable to improve portability across 
+        instead of ASM code when available to improve portability across 
         supported platforms.
       - d/patches/fix-broken-c-client-test.patch: Fixes the unit test so
         it will pass with EINVAL which is the correct error. Thanks to
