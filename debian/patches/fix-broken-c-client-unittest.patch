@@ -1,0 +1,20 @@
+Description: Loosens C client unit test to allow multiple errors
+ The test incorrectly assumes that ENOENT will eb returned on a clearly
+ incorrectly formatted hostname. Some other C library implementations
+ may do this, so we accept ENOENT or EINVAL.
+Author: Clint Byrum <clint@ubuntu.com>
+Bug: https://issues.apache.org/jira/browse/ZOOKEEPER-1353
+Bug-Ubuntu: http://pad.lv/912935
+Forwarded: yes
+
+--- zookeeper-3.3.4+dfsg1.orig/src/c/tests/TestZookeeperInit.cc
++++ zookeeper-3.3.4+dfsg1/src/c/tests/TestZookeeperInit.cc
+@@ -230,7 +230,7 @@ public:
+         const string INVALID_HOST("host1:1111+host:123");
+         zh=zookeeper_init(INVALID_HOST.c_str(),0,0,0,0,0);
+         CPPUNIT_ASSERT(zh==0);
+-        CPPUNIT_ASSERT_EQUAL(ENOENT,errno);
++        CPPUNIT_ASSERT((ENOENT|EINVAL) & errno);
+     }
+     void testNonexistentHost()
+     {
