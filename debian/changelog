@@ -1,3 +1,11 @@
+zookeeper (3.3.4+dfsg1-4) UNRELEASED; urgency=low
+
+  * Fix issue with quoting of parameters in zkCli.sh (Closes: #661837):
+    - d/patches/fixes/ZOOKEEPER-1403: Ensure parameters are correctly
+      quoted - thanks to John Eikenberry for this fix.
+
+ -- James Page <james.page@ubuntu.com>  Fri, 02 Mar 2012 11:15:45 +0000
+
 zookeeper (3.3.4+dfsg1-3) unstable; urgency=low
 
   * Sync changes from Ubuntu:
