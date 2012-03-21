@@ -3,6 +3,5 @@ debian/patch-build-system
 debian/disable-cygwin-detection
 fixes/ZOOKEEPER-705
 fixes/ZOOKEEPER-1033
-fix-broken-c-client-unittest.patch
 fixes/ZOOKEEPER-1374
 fixes/ZOOKEEPER-1403

@@ -7,8 +7,10 @@ Description: Disable detection of cygwin under Debian installs
 Author: Akira Kitada <akitada@gmail.com>
 Forwarded: not-needed
 
---- a/bin/zkServer.sh   2011-11-30 19:50:33.000000000 +0900
-+++ b/bin/zkServer.sh   2011-12-04 18:12:56.000000000 +0900
+Index: zookeeper/bin/zkServer.sh
+===================================================================
+--- zookeeper.orig/bin/zkServer.sh	2012-03-21 21:14:50.620574500 +0000
++++ zookeeper/bin/zkServer.sh	2012-03-21 21:17:22.472936041 +0000
 @@ -70,15 +70,6 @@
      echo "Using config:$2" >&2
  fi
@@ -25,7 +27,7 @@ Forwarded: not-needed
  echo "Using config: $ZOOCFG" >&2
  
  if [ -z $ZOOPIDFILE ]
-@@ -126,7 +117,7 @@
+@@ -130,7 +121,7 @@
      then
        echo "no zookeeper to stop (could not find file $ZOOPIDFILE)"
      else
