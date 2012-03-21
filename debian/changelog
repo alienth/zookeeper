@@ -3,6 +3,7 @@ zookeeper (3.3.5+dfsg1-1) unstable; urgency=low
   * New upstream bugfix release.
     - d/fix-broken-c-client-unittest.patch: Dropped - accepted upstream.
     - Refreshed all other patches.
+  * Bumped Standards-Version: 3.9.3.
   * Fix issue with quoting of parameters in zkCli.sh (Closes: #661837):
     - d/patches/fixes/ZOOKEEPER-1403: Ensure parameters are correctly
       quoted - thanks to John Eikenberry for this fix.

@@ -6,7 +6,7 @@ Uploaders: James Page <james.page@ubuntu.com>
 Homepage: http://hadoop.apache.org/zookeeper
 Vcs-Browser: http://git.debian.org/?p=pkg-java/zookeeper.git
 Vcs-Git: git://git.debian.org/pkg-java/zookeeper.git
-Standards-Version: 3.9.2
+Standards-Version: 3.9.3
 Build-Depends:
  ant (>= 1.6.0),
  ant-optional,
