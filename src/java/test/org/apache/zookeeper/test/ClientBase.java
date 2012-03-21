@@ -53,6 +53,7 @@ import org.apache.zookeeper.server.NIOServerCnxn;
 import org.apache.zookeeper.server.ZKDatabase;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.persistence.FileTxnLog;
+import static org.apache.zookeeper.client.FourLetterWordMain.send4LetterWord;
 
 import com.sun.management.UnixOperatingSystemMXBean;
 
@@ -81,7 +82,7 @@ public abstract class ClientBase extends TestCase {
         public void process(WatchedEvent event) { /* nada */ }
     }
 
-    protected static class CountdownWatcher implements Watcher {
+    public static class CountdownWatcher implements Watcher {
         // XXX this doesn't need to be volatile! (Should probably be final)
         volatile CountDownLatch clientConnected;
         volatile boolean connected;
@@ -103,10 +104,12 @@ public abstract class ClientBase extends TestCase {
                 notifyAll();
             }
         }
-        synchronized boolean isConnected() {
+        synchronized public boolean isConnected() {
             return connected;
         }
-        synchronized void waitForConnected(long timeout) throws InterruptedException, TimeoutException {
+        synchronized public void waitForConnected(long timeout)
+            throws InterruptedException, TimeoutException
+        {
             long expire = System.currentTimeMillis() + timeout;
             long left = timeout;
             while(!connected && left > 0) {
@@ -118,7 +121,9 @@ public abstract class ClientBase extends TestCase {
 
             }
         }
-        synchronized void waitForDisconnected(long timeout) throws InterruptedException, TimeoutException {
+        synchronized public void waitForDisconnected(long timeout)
+            throws InterruptedException, TimeoutException
+        {
             long expire = System.currentTimeMillis() + timeout;
             long left = timeout;
             while(connected && left > 0) {
@@ -206,44 +211,6 @@ public abstract class ClientBase extends TestCase {
         return alist;
     }
 
-    /**
-     * Send the 4letterword
-     * @param host the destination host
-     * @param port the destination port
-     * @param cmd the 4letterword
-     * @return
-     * @throws IOException
-     */
-    public static String send4LetterWord(String host, int port, String cmd)
-        throws IOException
-    {
-        LOG.info("connecting to " + host + " " + port);
-        Socket sock = new Socket(host, port);
-        BufferedReader reader = null;
-        try {
-            OutputStream outstream = sock.getOutputStream();
-            outstream.write(cmd.getBytes());
-            outstream.flush();
-            // this replicates NC - close the output stream before reading
-            sock.shutdownOutput();
-
-            reader =
-                new BufferedReader(
-                        new InputStreamReader(sock.getInputStream()));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while((line = reader.readLine()) != null) {
-                sb.append(line + "\n");
-            }
-            return sb.toString();
-        } finally {
-            sock.close();
-            if (reader != null) {
-                reader.close();
-            }
-        }
-    }
-
     public static boolean waitForServerUp(String hp, long timeout) {
         long start = System.currentTimeMillis();
         while (true) {
@@ -328,7 +295,7 @@ public abstract class ClientBase extends TestCase {
         return Integer.parseInt(portstr);
     }
 
-    static NIOServerCnxn.Factory createNewServerInstance(File dataDir,
+    public static NIOServerCnxn.Factory createNewServerInstance(File dataDir,
             NIOServerCnxn.Factory factory, String hostPort, int maxCnxns)
         throws IOException, InterruptedException
     {

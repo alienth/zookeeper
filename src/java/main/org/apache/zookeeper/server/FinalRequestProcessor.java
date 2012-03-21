@@ -54,6 +54,7 @@ import org.apache.zookeeper.server.NIOServerCnxn.Factory;
 import org.apache.zookeeper.server.ZooKeeperServer.ChangeRecord;
 import org.apache.zookeeper.txn.CreateSessionTxn;
 import org.apache.zookeeper.txn.ErrorTxn;
+import org.apache.zookeeper.txn.TxnHeader;
 
 /**
  * This Request processor actually applies any transaction associated with a
@@ -100,20 +101,10 @@ public class FinalRequestProcessor implements RequestProcessor {
                 }
             }
             if (request.hdr != null) {
-                rc = zks.getZKDatabase().processTxn(request.hdr, request.txn);
-                if (request.type == OpCode.createSession) {
-                    if (request.txn instanceof CreateSessionTxn) {
-                        CreateSessionTxn cst = (CreateSessionTxn) request.txn;
-                        zks.sessionTracker.addSession(request.sessionId, cst
-                                .getTimeOut());
-                    } else {
-                        LOG.warn("*****>>>>> Got "
-                                + request.txn.getClass() + " "
-                                + request.txn.toString());
-                    }
-                } else if (request.type == OpCode.closeSession) {
-                    zks.sessionTracker.removeSession(request.sessionId);
-                }
+               TxnHeader hdr = request.hdr;
+               Record txn = request.txn;
+
+               rc = zks.processTxn(hdr, txn);
             }
             // do not add non quorum packets to the queue.
             if (Request.isQuorum(request.type)) {
@@ -355,12 +346,13 @@ public class FinalRequestProcessor implements RequestProcessor {
             err = Code.MARSHALLINGERROR;
         }
 
+        long lastZxid = zks.getZKDatabase().getDataTreeLastProcessedZxid();
         ReplyHeader hdr =
-            new ReplyHeader(request.cxid, request.zxid, err.intValue());
+            new ReplyHeader(request.cxid, lastZxid, err.intValue());
 
         zks.serverStats().updateLatency(request.createTime);
         ((CnxnStats)cnxn.getStats())
-            .updateForResponse(request.cxid, request.zxid, lastOp,
+            .updateForResponse(request.cxid, lastZxid, lastOp,
                     request.createTime, System.currentTimeMillis());
 
         try {
