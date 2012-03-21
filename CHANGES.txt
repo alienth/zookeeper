@@ -1,3 +1,45 @@
+Release 3.3.5 - 2012-03-18
+Backward compatible changes:
+
+BUGFIXES:
+
+  ZOOKEEPER-1089. zkServer.sh status does not work due to invalid
+  option of nc (Roman Shaposhnik via phunt)
+
+  ZOOKEEPER-1345. Add a .gitignore file with general exclusions and
+  Eclipse project files excluded (Harsh J via phunt)
+ 
+  ZOOKEEPER-973. bind() could fail on Leader because it does not
+  setReuseAddress on its ServerSocket (Harsh J via phunt)
+  
+  ZOOKEEPER-1367. Data inconsistencies and unexpired ephemeral nodes after 
+  cluster restart. (Benjamin Reed via mahadev)
+
+  ZOOKEEPER-1353. C client test suite fails consistently.
+  (Clint Byrum via mahadev)
+
+  ZOOKEEPER-1352. server.InvalidSnapshotTest is using connection timeouts 
+  that are too short. (phunt via mahadev)
+
+  ZOOKEEPER-1309. Creating a new ZooKeeper client can leak file handles. (Daniel Lord via camille)
+  
+  ZOOKEEPER-1386. avoid flaky URL redirection in "ant javadoc" : 
+  replace "http://java.sun.com/javase/6/docs/api/" with 
+  "http://download.oracle.com/javase/6/docs/api/" (Eugene Koontz via camille)
+
+  ZOOKEEPER-1277. servers stop serving when lower 32bits of zxid roll
+  over (phunt)
+
+  ZOOKEEPER-1412. java client watches inconsistently triggered on
+  reconnect (phunt)
+  
+IMPROVEMENTS:
+
+  ZOOKEEPER-1389. it would be nice if start-foreground used exec $JAVA
+  in order to get rid of the intermediate shell process
+  (Roman Shaposhnik via phunt)
+
+
 Release 3.3.4 - 2011-11-16
 Backward compatible changes:
 
