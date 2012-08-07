@@ -1,28 +1,3 @@
-Upstream tarball
-----------------
-
-The command used to filter and import the upstream tarball was:
-
-VERSION=3.3.4
-git-import-orig --pristine-tar --filter-pristine-tar --no-merge --upstream-version=$VERSION+dfsg1 \
-                --filter="*.jar" \
-                --filter="Makefile.in" \
-                --filter="aclocal.m4" \
-                --filter="autom4te.cache" \
-                --filter="compile" \
-                --filter="config.guess" \
-                --filter="config.sub" \
-                --filter="configure" \
-                --filter="ltmain.sh" \
-                --filter="zookeeper-$VERSION/contrib" \
-                --filter="zookeeper-$VERSION/docs" \
-                --filter="zookeeper-$VERSION/recipes" \
-                --filter="zookeeper-$VERSION/dist-maven" \
-                --filter="zookeeper-$VERSION/src/contrib/fatjar" \
-                --filter="zookeeper-$VERSION/src/c/generated" \
-                --filter="zookeeper-$VERSION/src/java/main/org/apache/jute/compiler/generated/*.java" \
-                --filter="zookeeper-$VERSION/src/java/generated" <tarball>
-
 RESTful support
 ---------------
 

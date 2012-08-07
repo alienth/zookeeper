@@ -1,3 +1,10 @@
+zookeeper (3.3.5+dfsg1-2ubuntu1) UNRELEASED; urgency=low
+
+  * d/{orig-tar.sh,watch,README.source}: Repack upstream tarball when
+    downloading using uscan.
+
+ -- James Page <james.page@ubuntu.com>  Tue, 07 Aug 2012 15:14:43 +0100
+
 zookeeper (3.3.5+dfsg1-2) unstable; urgency=low
 
   * d/patches/fixes/ZOOKEEPER-1431: Fix up memory leak in zookeeper
