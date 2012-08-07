@@ -818,7 +818,7 @@ void free_duplicate_path(const char *free_path, const char* path) {
 */
 static char* prepend_string(zhandle_t *zh, const char* client_path) {
     char *ret_str;
-    if (zh->chroot == NULL)
+    if (zh == NULL || zh->chroot == NULL)
         return (char *) client_path;
     // handle the chroot itself, client_path = "/"
     if (strlen(client_path) == 1) {
@@ -1949,11 +1949,9 @@ int zookeeper_process(zhandle_t *zh, int events)
             completion_list_t *cptr = dequeue_completion(&zh->sent_requests);
 
             /* [ZOOKEEPER-804] Don't assert if zookeeper_close has been called. */
-            if (zh->close_requested == 1) {
-                if (cptr) {
-                    destroy_completion_entry(cptr);
-                    cptr = NULL;
-                }
+            if (zh->close_requested == 1 && cptr == NULL) {
+                LOG_DEBUG(("Completion queue has been cleared by zookeeper_close()"));
+                close_buffer_iarchive(&ia);
                 return api_epilog(zh,ZINVALIDSTATE);
             }
             assert(cptr);
