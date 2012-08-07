@@ -19,14 +19,14 @@ GZIP=--best tar -cjf $NEWTAR --exclude '*.jar' \
          --exclude "config.sub" \
          --exclude "configure" \
          --exclude "ltmain.sh" \
-         --exclude "contrib" \
-         --exclude "docs" \
-         --exclude "recipes" \
-         --exclude "dist-maven" \
-         --exclude "src/contrib/fatjar" \
-         --exclude "src/c/generated" \
-         --exclude "src/java/main/org/apache/jute/compiler/generated/*.java" \
-         --exclude "src/java/generated" $DIR
+         --exclude "zookeeper-${VERSION}/contrib" \
+         --exclude "zookeeper-${VERSION}/docs" \
+         --exclude "zookeeper-${VERSION}/recipes" \
+         --exclude "zookeeper-${VERSION}/dist-maven" \
+         --exclude "zookeeper-${VERSION}/src/contrib/fatjar" \
+         --exclude "zookeeper-${VERSION}/src/c/generated" \
+         --exclude "zookeeper-${VERSION}/src/java/main/org/apache/jute/compiler/generated/*.java" \
+         --exclude "zookeeper-${VERSION}/src/java/generated" $DIR
 
 rm -rf $DIR $TAR
 
