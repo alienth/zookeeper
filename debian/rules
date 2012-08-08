@@ -23,9 +23,15 @@ override_dh_auto_build:
 	$(MAKE) -C src/c
 
 	# Compile contribs - bookkeeper
-	cd src/contrib && ant -Dversion=$(DEB_UPSTREAM_VERSION) -DlastRevision=-1 -Ddest.dir=../../build/zookeeper -Divy.jar.exists=true -Divy.initialized=true -Dcontribfilesetincludes="bookkeeper/build.xml"
+	cd src/contrib && \
+		ant -Dversion=$(DEB_UPSTREAM_VERSION) \
+			-propertyfile ../../debian/ant.properties \
+			-Dcontribfilesetincludes="bookkeeper/build.xml"
 	# Compile contribs - zooinspector
-	cd src/contrib && ant -Dversion=$(DEB_UPSTREAM_VERSION) -DlastRevision=-1 -Ddest.dir=../../build/zookeeper -Divy.jar.exists=true -Divy.initialized=true -Dcontribfilesetincludes="zooinspector/build.xml"
+	cd src/contrib && \
+		ant -Dversion=$(DEB_UPSTREAM_VERSION) \
+			-propertyfile ../../debian/ant.properties \
+			-Dcontribfilesetincludes="zooinspector/build.xml"
 
 	# Build Python Bindings
 	cd src/contrib/zkpython && \

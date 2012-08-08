@@ -1,9 +1,16 @@
-zookeeper (3.3.5+dfsg1-2ubuntu1) UNRELEASED; urgency=low
+zookeeper (3.3.6+dfsg-0ubuntu1) quantal; urgency=low
 
-  * d/{orig-tar.sh,watch,README.source}: Repack upstream tarball when
-    downloading using uscan.
+  * New upstream release:
+    - Dropped patches for ZOOKEEPER-1403 and ZOOKEEPER-1431; included upstream.
+    - Refreshed all other patches.
+  * d/{watch,orig-tar.sh,README.source}: Repack upstream tarball using uscan
+    to ease new upstream releases.
+  * d/control: Version debhelper (>= 9~).
+  * d/rules: Refactor contrib builds to use properties file.
+  * d/ant.properties: Collate properties for contrib builds ensuring that
+    bytecode built is backwards compatible.
 
- -- James Page <james.page@ubuntu.com>  Tue, 07 Aug 2012 15:14:43 +0100
+ -- James Page <james.page@ubuntu.com>  Wed, 08 Aug 2012 10:46:00 +0100
 
 zookeeper (3.3.5+dfsg1-2) unstable; urgency=low
 

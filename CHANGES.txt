@@ -1,3 +1,47 @@
+Release 3.3.6 - 2012-08-01
+Backward compatible changes:
+
+BUGFIXES:
+
+  ZOOKEEPER-1466. QuorumCnxManager.shutdown missing synchronization.
+  (Patrick Hunt via mahadev)
+
+  ZOOKEEPER-1403. zkCli.sh script quoting issue (James Page via phunt)
+
+  ZOOKEEPER-1433. improve ZxidRolloverTest (test seems flakey) (phunt via henryr)
+
+  ZOOKEEPER-1395. node-watcher double-free redux (Mike Lundy via henryr)   
+  
+  ZOOKEEPER-1450. Backport of ZOOKEEPER-1294 fix to 3.4 and 3.3 (Norman Bishop via camille)
+
+  ZOOKEEPER-1305. zookeeper.c:prepend_string func can dereference null ptr (Daniel Lescohier via michim)
+
+  ZOOKEEPER-1048. addauth command does not work in cli_mt/cli_st (allengao via michim)
+
+  ZOOKEEPER-1339. C client doesn't build with --enable-debug (Eric Liang via michim)
+
+  ZOOKEEPER-1318. In Python binding, get_children (and get and exists, and probably others)
+  with expired session doesn't raise exception properly (henryr via michim)
+
+  ZOOKEEPER-1431. zkpython async calls leak memory (Kapil Thangavelu and Andre Cruz via henryr)
+
+  ZOOKEEPER-1163. Memory leak in zk_hashtable.c:do_insert_watcher_object()
+  (Anupam Chanda via michim)
+
+  ZOOKEEPER-1489. Data loss after truncate on transaction log (phunt)
+
+  ZOOKEEPER-1521. LearnerHandler initLimit/syncLimit problems
+    specifying follower socket timeout limits (phunt)
+
+  ZOOKEEPER-1493. C Client: zookeeper_process doesn't invoke
+    completion callback if zookeeper_close has been called
+    (Michi Mutsuzaki via phunt and mahadev)
+
+IMPROVEMENTS:
+
+  ZOOKEEPER-1454. Document how to run autoreconf if cppunit is
+    installed in a non-standard directory (Michi Mutsuzaki via phunt)
+
 Release 3.3.5 - 2012-03-18
 Backward compatible changes:
 

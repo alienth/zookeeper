@@ -4,6 +4,4 @@ debian/disable-cygwin-detection
 fixes/ZOOKEEPER-705
 fixes/ZOOKEEPER-1033
 fixes/ZOOKEEPER-1374
-fixes/ZOOKEEPER-1403
 ftbfs-gcc-4.7.diff
-fixes/ZOOKEEPER-1431

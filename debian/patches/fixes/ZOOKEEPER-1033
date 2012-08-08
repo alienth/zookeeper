@@ -5,14 +5,14 @@ Origin: https://issues.apache.org/jira/browse/ZOOKEEPER-1033
 
 Index: zookeeper/src/c/configure.ac
 ===================================================================
---- zookeeper.orig/src/c/configure.ac	2012-03-21 21:14:50.000000000 +0000
-+++ zookeeper/src/c/configure.ac	2012-03-21 21:18:13.509055030 +0000
+--- zookeeper.orig/src/c/configure.ac	2012-08-08 09:39:55.000000000 +0100
++++ zookeeper/src/c/configure.ac	2012-08-08 09:41:33.358151084 +0100
 @@ -3,7 +3,7 @@
  
  AC_PREREQ(2.59)
  
--AC_INIT([zookeeper C client],3.3.5,[zookeeper-user@hadoop.apache.org],[c-client-src])
-+AC_INIT([zookeeper C client],3.3.5,[zookeeper-user@hadoop.apache.org],[zookeeper])
+-AC_INIT([zookeeper C client],3.3.6,[zookeeper-user@hadoop.apache.org],[c-client-src])
++AC_INIT([zookeeper C client],3.3.6,[zookeeper-user@hadoop.apache.org],[zookeeper])
  AC_CONFIG_SRCDIR([src/zookeeper.c])
  
  # initialize Doxygen support
