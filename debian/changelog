@@ -1,11 +1,6 @@
 zookeeper (3.3.6+dfsg-1) experimental; urgency=low
 
   * Re-sync with Ubuntu.
-
- -- James Page <james.page@ubuntu.com>  Wed, 19 Sep 2012 10:08:46 +0100
-
-zookeeper (3.3.6+dfsg-0ubuntu1) quantal; urgency=low
-
   * New upstream release:
     - Dropped patches for ZOOKEEPER-1403 and ZOOKEEPER-1431; included upstream.
     - Refreshed all other patches.
@@ -16,7 +11,7 @@ zookeeper (3.3.6+dfsg-0ubuntu1) quantal; urgency=low
   * d/ant.properties: Collate properties for contrib builds ensuring that
     bytecode built is backwards compatible.
 
- -- James Page <james.page@ubuntu.com>  Wed, 08 Aug 2012 10:46:00 +0100
+ -- James Page <james.page@ubuntu.com>  Wed, 19 Sep 2012 10:08:46 +0100
 
 zookeeper (3.3.5+dfsg1-2) unstable; urgency=low
 
