@@ -1,3 +1,9 @@
+zookeeper (3.3.6+dfsg-1) experimental; urgency=low
+
+  * Re-sync with Ubuntu.
+
+ -- James Page <james.page@ubuntu.com>  Wed, 19 Sep 2012 10:08:46 +0100
+
 zookeeper (3.3.6+dfsg-0ubuntu1) quantal; urgency=low
 
   * New upstream release:
