@@ -20,7 +20,6 @@ package org.apache.zookeeper;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.List;
 
 public class TestableZooKeeper extends ZooKeeper {
@@ -53,7 +52,7 @@ public class TestableZooKeeper extends ZooKeeper {
      */
     public void testableConnloss() throws IOException {
         synchronized(cnxn) {
-            ((SocketChannel)cnxn.sendThread.sockKey.channel()).socket().close();
+            cnxn.sendThread.testableCloseSocket();
         }
     }
 
@@ -68,7 +67,7 @@ public class TestableZooKeeper extends ZooKeeper {
                 synchronized(cnxn) {
                     try {
                         try {
-                            ((SocketChannel)cnxn.sendThread.sockKey.channel()).socket().close();
+                            cnxn.sendThread.testableCloseSocket();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -98,6 +97,6 @@ public class TestableZooKeeper extends ZooKeeper {
      * @return the last zxid as seen by the client session
      */
     public long testableLastZxid() {
-        return cnxn.lastZxid;
+        return cnxn.getLastZxid();
     }
 }

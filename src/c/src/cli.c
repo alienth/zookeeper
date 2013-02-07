@@ -21,9 +21,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifndef WIN32
+#include <sys/time.h>
 #include <unistd.h>
 #include <sys/select.h>
-#include <sys/time.h>
+#else
+#include "winport.h"
+//#include <io.h> <-- can't include, conflicting definitions of close()
+int read(int _FileHandle, void * _DstBuf, unsigned int _MaxCharCount);
+int write(int _Filehandle, const void * _Buf, unsigned int _MaxCharCount);
+#define ctime_r(tctime, buffer) ctime_s (buffer, 40, tctime)
+#endif
+
 #include <time.h>
 #include <errno.h>
 #include <assert.h>
@@ -74,13 +84,30 @@ static const char* state2String(int state){
   return "INVALID_STATE";
 }
 
+static const char* type2String(int state){
+  if (state == ZOO_CREATED_EVENT)
+    return "CREATED_EVENT";
+  if (state == ZOO_DELETED_EVENT)
+    return "DELETED_EVENT";
+  if (state == ZOO_CHANGED_EVENT)
+    return "CHANGED_EVENT";
+  if (state == ZOO_CHILD_EVENT)
+    return "CHILD_EVENT";
+  if (state == ZOO_SESSION_EVENT)
+    return "SESSION_EVENT";
+  if (state == ZOO_NOTWATCHING_EVENT)
+    return "NOTWATCHING_EVENT";
+
+  return "UNKNOWN_EVENT_TYPE";
+}
+
 void watcher(zhandle_t *zzh, int type, int state, const char *path,
              void* context)
 {
     /* Be careful using zh here rather than zzh - as this may be mt code
      * the client lib may call the watcher before zookeeper_init returns */
 
-    fprintf(stderr, "Watcher %d state = %s", type, state2String(state));
+    fprintf(stderr, "Watcher %s state = %s", type2String(type), state2String(state));
     if (path && strlen(path) > 0) {
       fprintf(stderr, " for path %s", path);
     }
@@ -132,11 +159,15 @@ void dumpStat(const struct Stat *stat) {
     }
     tctime = stat->ctime/1000;
     tmtime = stat->mtime/1000;
+       
+    ctime_r(&tmtime, tmtimes);
+    ctime_r(&tctime, tctimes);
+       
     fprintf(stderr, "\tctime = %s\tczxid=%llx\n"
     "\tmtime=%s\tmzxid=%llx\n"
     "\tversion=%x\taversion=%x\n"
     "\tephemeralOwner = %llx\n",
-    ctime_r(&tctime, tctimes), _LL_CAST_ stat->czxid, ctime_r(&tmtime, tmtimes),
+     tctimes, _LL_CAST_ stat->czxid, tmtimes,
     _LL_CAST_ stat->mzxid,
     (unsigned int)stat->version, (unsigned int)stat->aversion,
     _LL_CAST_ stat->ephemeralOwner);
@@ -284,6 +315,7 @@ void processline(char *line) {
       fprintf(stderr, "    ls2 <path>\n");
       fprintf(stderr, "    sync <path>\n");
       fprintf(stderr, "    exists <path>\n");
+      fprintf(stderr, "    wexists <path>\n");
       fprintf(stderr, "    myid\n");
       fprintf(stderr, "    verbose\n");
       fprintf(stderr, "    addauth <id> <scheme>\n");
@@ -308,7 +340,7 @@ void processline(char *line) {
             fprintf(stderr, "Path must start with /, found: %s\n", line);
             return;
         }
-        gettimeofday(&startTime, 0);
+               
         rc = zoo_aget(zh, line, 1, my_data_completion, strdup(line));
         if (rc) {
             fprintf(stderr, "Error %d for %s\n", rc, line);
@@ -411,6 +443,23 @@ void processline(char *line) {
             return;
         }
         rc = zoo_async(zh, line, my_string_completion, strdup(line));
+        if (rc) {
+            fprintf(stderr, "Error %d for %s\n", rc, line);
+        }
+    } else if (startsWith(line, "wexists ")) {
+#ifdef THREADED
+        struct Stat stat;
+#endif
+        line += 8;
+        if (line[0] != '/') {
+            fprintf(stderr, "Path must start with /, found: %s\n", line);
+            return;
+        }
+#ifndef THREADED
+        rc = zoo_awexists(zh, line, watcher, (void*) 0, my_stat_completion, strdup(line));
+#else
+        rc = zoo_wexists(zh, line, watcher, (void*) 0, &stat);
+#endif
         if (rc) {
             fprintf(stderr, "Error %d for %s\n", rc, line);
         }
@@ -583,7 +632,7 @@ int main(int argc, char **argv) {
         events = 0;
         if (rc > 0) {
             if (FD_ISSET(fd, &rfds)) {
-           	    events |= ZOOKEEPER_READ;
+                events |= ZOOKEEPER_READ;
             }
             if (FD_ISSET(fd, &wfds)) {
                 events |= ZOOKEEPER_WRITE;

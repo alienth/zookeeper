@@ -24,20 +24,20 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 
 import junit.framework.Assert;
-import junit.framework.TestCase;
 
 import org.apache.jute.Record;
-import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
-import org.apache.zookeeper.server.NIOServerCnxn;
 import org.apache.zookeeper.server.Request;
+import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ZKDatabase;
+import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.persistence.FileTxnLog;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.persistence.TxnLog.TxnIterator;
@@ -48,9 +48,11 @@ import org.apache.zookeeper.txn.TxnHeader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class TruncateTest extends TestCase {
-	private static final Logger LOG = Logger.getLogger(TruncateTest.class);
+public class TruncateTest extends ZKTestCase {
+	private static final Logger LOG = LoggerFactory.getLogger(TruncateTest.class);
     File dataDir1, dataDir2, dataDir3;
     final int baseHostPort = 12233;
     
@@ -125,7 +127,7 @@ public class TruncateTest extends TestCase {
     public void testTruncate() throws IOException, InterruptedException, KeeperException {
         // Prime the server that is going to come in late with 50 txns
         String hostPort = "127.0.0.1:" + baseHostPort;
-        NIOServerCnxn.Factory factory = ClientBase.createNewServerInstance(dataDir1, null, hostPort, 100);
+        ServerCnxnFactory factory = ClientBase.createNewServerInstance(dataDir1, null, hostPort, 100);
         ClientBase.shutdownServerInstance(factory, hostPort);
 
         // standalone starts with 0 epoch while quorum starts with 1
@@ -140,7 +142,13 @@ public class TruncateTest extends TestCase {
             zk.create("/" + i, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         }
         zk.close();
-        ZKDatabase zkDb = factory.getZooKeeperServer().getZKDatabase();
+        
+        ZKDatabase zkDb;
+        {
+            ZooKeeperServer zs = ClientBase.getServer(factory);
+    
+            zkDb = zs.getZKDatabase();
+        }
         factory.shutdown();
         try {
             zkDb.close();
@@ -178,7 +186,7 @@ public class TruncateTest extends TestCase {
         zk2.getData("/9", false, new Stat());
         try {
             zk2.getData("/10", false, new Stat());
-            fail("Should have gotten an error");
+            Assert.fail("Should have gotten an error");
         } catch(KeeperException.NoNodeException e) {
             // this is what we want
         }

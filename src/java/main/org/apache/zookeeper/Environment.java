@@ -23,13 +23,16 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Provide insight into the runtime environment.
  *
  */
 public class Environment {
+    public static String JAAS_CONF_KEY = "java.security.auth.login.config";
+
     public static class Entry {
         private String k;
         private String v;

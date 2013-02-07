@@ -21,15 +21,14 @@ import static org.junit.Assert.*;
 
 import java.util.Arrays;
 
-import org.apache.log4j.Logger;
+import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.server.quorum.QuorumPeer;
 import org.apache.zookeeper.server.quorum.QuorumStats;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ObserverLETest {
-    private static final Logger LOG = Logger.getLogger(ObserverLETest.class);
+public class ObserverLETest extends ZKTestCase {
     final QuorumBase qb = new QuorumBase();
     final ClientTest ct = new ClientTest();
 
