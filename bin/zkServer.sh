@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -42,18 +42,18 @@ else
     ZOOMAIN="org.apache.zookeeper.server.quorum.QuorumPeerMain"
 fi
 
-# Only follow symlinks if readlink supports it
-if readlink -f "$0" > /dev/null 2>&1
-then
-  ZOOBIN=`readlink -f "$0"`
+# use POSTIX interface, symlink is followed automatically
+ZOOBIN="${BASH_SOURCE-$0}"
+ZOOBIN=`dirname ${ZOOBIN}`
+ZOOBINDIR=`cd ${ZOOBIN}; pwd`
+
+if [ -e "$ZOOBIN/../libexec/zkEnv.sh" ]; then
+  . "$ZOOBINDIR"/../libexec/zkEnv.sh
 else
-  ZOOBIN="$0"
+  . "$ZOOBINDIR"/zkEnv.sh
 fi
-ZOOBINDIR=`dirname "$ZOOBIN"`
 
-. "$ZOOBINDIR"/zkEnv.sh
-
-if [ "x$SERVER_JVMFLAGS" ]
+if [ "x$SERVER_JVMFLAGS"  != "x" ]
 then
     JVMFLAGS="$SERVER_JVMFLAGS $JVMFLAGS"
 fi
@@ -67,7 +67,6 @@ fi
 if [ "x`dirname $ZOOCFG`" != "x$ZOOCFGDIR" ]
 then
     ZOOCFG="$2"
-    echo "Using config:$2" >&2
 fi
 
 if $cygwin
@@ -81,8 +80,19 @@ fi
 
 echo "Using config: $ZOOCFG" >&2
 
-if [ -z $ZOOPIDFILE ]
-  then ZOOPIDFILE=$(grep dataDir "$ZOOCFG" | sed -e 's/.*=//')/zookeeper_server.pid
+if [ -z $ZOOPIDFILE ]; then
+    ZOO_DATADIR=$(grep "^[[:space:]]*dataDir" "$ZOOCFG" | sed -e 's/.*=//')
+    if [ ! -d "$ZOO_DATADIR" ]; then
+        mkdir -p "$ZOO_DATADIR"
+    fi
+    ZOOPIDFILE="$ZOO_DATADIR/zookeeper_server.pid"
+else
+    # ensure it exists, otw stop will fail
+    mkdir -p $(dirname "$ZOOPIDFILE")
+fi
+
+if [ ! -w "$ZOO_LOG_DIR" ] ; then
+mkdir -p "$ZOO_LOG_DIR"
 fi
 
 _ZOO_DAEMON_OUT="$ZOO_LOG_DIR/zookeeper.out"
@@ -134,6 +144,7 @@ stop)
       rm "$ZOOPIDFILE"
       echo STOPPED
     fi
+    exit 0
     ;;
 upgrade)
     shift

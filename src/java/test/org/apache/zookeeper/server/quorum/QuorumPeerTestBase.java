@@ -25,21 +25,21 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import junit.framework.TestCase;
-
-import org.apache.log4j.Logger;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.test.QuorumBase;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Has some common functionality for tests that work with QuorumPeers. Override
  * process(WatchedEvent) to implement the Watcher interface
  */
-public class QuorumPeerTestBase extends TestCase implements Watcher {
-    protected static final Logger LOG =
-        Logger.getLogger(QuorumPeerTestBase.class);
+public class QuorumPeerTestBase extends ZKTestCase implements Watcher {
+    protected static final Logger LOG = LoggerFactory
+            .getLogger(QuorumPeerTestBase.class);
 
     public void process(WatchedEvent event) {
         // ignore for this test
@@ -59,15 +59,14 @@ public class QuorumPeerTestBase extends TestCase implements Watcher {
         volatile TestQPMain main;
 
         public MainThread(int myid, int clientPort, String quorumCfgSection)
-            throws IOException
-        {
+                throws IOException {
             File tmpDir = ClientBase.createTmpDir();
             LOG.info("id = " + myid + " tmpDir = " + tmpDir + " clientPort = "
                     + clientPort);
             confFile = new File(tmpDir, "zoo.cfg");
 
             FileWriter fwriter = new FileWriter(confFile);
-            fwriter.write("tickTime=2000\n");
+            fwriter.write("tickTime=4000\n");
             fwriter.write("initLimit=10\n");
             fwriter.write("syncLimit=5\n");
 
@@ -94,8 +93,6 @@ public class QuorumPeerTestBase extends TestCase implements Watcher {
             fwriter.write(Integer.toString(myid));
             fwriter.flush();
             fwriter.close();
-
-            main = new TestQPMain();
         }
 
         Thread currentThread;

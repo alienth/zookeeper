@@ -90,16 +90,16 @@ public class ZooKeeperServerBean implements ZooKeeperServerMXBean, ZKMBeanInfo {
     }
 
     public int getMaxClientCnxnsPerHost() {
-        NIOServerCnxn.Factory fac = zks.getServerCnxnFactory();
+        ServerCnxnFactory fac = zks.getServerCnxnFactory();
         if (fac == null) {
             return -1;
         }
-        return fac.getMaxClientCnxns();
+        return fac.getMaxClientCnxnsPerHost();
     }
 
     public void setMaxClientCnxnsPerHost(int max) {
         // if fac is null the exception will be propagated to the client
-        zks.getServerCnxnFactory().maxClientCnxns = max;
+        zks.getServerCnxnFactory().setMaxClientCnxnsPerHost(max);
     }
 
     public int getMinSessionTimeout() {
@@ -139,5 +139,9 @@ public class ZooKeeperServerBean implements ZooKeeperServerMXBean, ZKMBeanInfo {
         ServerStats serverStats = zks.serverStats();
         serverStats.resetRequestCounters();
         serverStats.resetLatency();
+    }
+
+    public long getNumAliveConnections() {
+        return zks.getNumAliveConnections();
     }
 }

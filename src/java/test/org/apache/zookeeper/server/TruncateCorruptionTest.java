@@ -23,13 +23,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import junit.framework.TestCase;
-
-import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.ZooKeeper.States;
@@ -39,16 +37,18 @@ import org.apache.zookeeper.server.util.PortForwarder;
 import org.apache.zookeeper.test.ClientBase;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Verify ZOOKEEPER-1489 - cause truncation followed by continued append to the
  * snaplog, verify that the newly appended information (after the truncation) is
  * readable.
  */
-public class TruncateCorruptionTest extends TestCase {
+public class TruncateCorruptionTest extends ZKTestCase {
 
-    private static final Logger LOG =
-            Logger.getLogger(TruncateCorruptionTest.class);
+    private static final Logger LOG = LoggerFactory
+            .getLogger(TruncateCorruptionTest.class);
 
     public interface Check {
         boolean doCheck();
@@ -65,7 +65,7 @@ public class TruncateCorruptionTest extends TestCase {
             }
             Thread.sleep(50);
         }
-        LOG.debug("await failed in " + timeoutMillis);
+        LOG.debug("await failed in {}", timeoutMillis);
         return false;
     }
 
@@ -80,8 +80,13 @@ public class TruncateCorruptionTest extends TestCase {
         wrapper2.start();
         wrapper3.start();
 
-        wrapper2.await(ClientBase.CONNECTION_TIMEOUT);
-        wrapper3.await(ClientBase.CONNECTION_TIMEOUT);
+        try {
+            wrapper2.await(ClientBase.CONNECTION_TIMEOUT);
+            wrapper3.await(ClientBase.CONNECTION_TIMEOUT);
+        } catch (Exception e) {
+            ClientBase.logAllStackTraces();
+            throw e;
+        }
         List<PortForwarder> pfs = startForwarding();
         Thread.sleep(1000);
         wrapper1.start();
@@ -252,8 +257,8 @@ public class TruncateCorruptionTest extends TestCase {
 
     public static class ZookeeperServerWrapper {
 
-        private static final Logger LOG = 
-                Logger.getLogger(ZookeeperServerWrapper.class);
+        private static final Logger LOG = LoggerFactory
+                .getLogger(ZookeeperServerWrapper.class);
 
         private final MainThread server;
         private final int clientPort;

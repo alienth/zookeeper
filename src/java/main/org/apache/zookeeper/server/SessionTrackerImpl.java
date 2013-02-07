@@ -28,7 +28,8 @@ import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.SessionExpiredException;
 
@@ -39,7 +40,7 @@ import org.apache.zookeeper.KeeperException.SessionExpiredException;
  * in a given interval.
  */
 public class SessionTrackerImpl extends Thread implements SessionTracker {
-    private static final Logger LOG = Logger.getLogger(SessionTrackerImpl.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SessionTrackerImpl.class);
 
     HashMap<Long, SessionImpl> sessionsById = new HashMap<Long, SessionImpl>();
 
@@ -149,7 +150,7 @@ public class SessionTrackerImpl extends Thread implements SessionTracker {
                 set = sessionSets.remove(nextExpirationTime);
                 if (set != null) {
                     for (SessionImpl s : set.sessions) {
-                        sessionsById.remove(s.sessionId);
+                        setSessionClosing(s.sessionId);
                         expirer.expire(s);
                     }
                 }
@@ -169,7 +170,8 @@ public class SessionTrackerImpl extends Thread implements SessionTracker {
                     + Long.toHexString(sessionId) + " with timeout " + timeout);
         }
         SessionImpl s = sessionsById.get(sessionId);
-        if (s == null) {
+        // Return false, if the session doesn't exists or marked as closing
+        if (s == null || s.isClosing()) {
             return false;
         }
         long expireTime = roundToInterval(System.currentTimeMillis() + timeout);
@@ -211,11 +213,17 @@ public class SessionTrackerImpl extends Thread implements SessionTracker {
                     + Long.toHexString(sessionId));
         }
         if (s != null) {
-            sessionSets.get(s.tickTime).sessions.remove(s);
+            SessionSet set = sessionSets.get(s.tickTime);
+            // Session expiration has been removing the sessions   
+            if(set != null){
+                set.sessions.remove(s);
+            }
         }
     }
 
     public void shutdown() {
+        LOG.info("Shutting down");
+
         running = false;
         if (LOG.isTraceEnabled()) {
             ZooTrace.logTraceMessage(LOG, ZooTrace.getTextTraceLevel(),
@@ -263,7 +271,7 @@ public class SessionTrackerImpl extends Thread implements SessionTracker {
 
     synchronized public void setOwner(long id, Object owner) throws SessionExpiredException {
         SessionImpl session = sessionsById.get(id);
-        if (session == null) {
+        if (session == null || session.isClosing()) {
             throw new KeeperException.SessionExpiredException();
         }
         session.owner = owner;
