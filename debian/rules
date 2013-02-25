@@ -85,7 +85,6 @@ override_dh_clean:
              --exclude=src/c \
              --exclude=src/reciped
 	jh_clean
-	rm -rf debian/*.upstart
 	# Clean generated install files
 	for install in libzookeeper-mt2 libzookeeper-st2 \
 				   libzookeeper-st-dev libzookeeper-mt-dev; do \
