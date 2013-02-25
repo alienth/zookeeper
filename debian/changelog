@@ -1,4 +1,4 @@
-zookeeper (3.4.5+dfsg-1~exp1) UNRELEASED; urgency=low
+zookeeper (3.4.5+dfsg-1~exp1) experimental; urgency=low
 
   * New upstream release (Closes: #699120, LP: #1107400, #954160):
     - d/p/ZOOKEEPER-{1374,1033}: Dropped, included upstream.
@@ -13,6 +13,8 @@ zookeeper (3.4.5+dfsg-1~exp1) UNRELEASED; urgency=low
     - d/rules: Only execute native test suite on i386 and amd64
       architectures; its a bit racey and does not execute reliably
       on others.
+  * d/rules,zookeeperd.upstart: Rejig now that debhelper in Debian and
+    Ubuntu does the right things with init and upstart configs.
 
  -- James Page <james.page@ubuntu.com>  Thu, 07 Feb 2013 10:48:31 +0000
 

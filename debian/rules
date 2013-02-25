@@ -135,9 +135,5 @@ override_dh_installdocs:
 	  -plibzookeeper-st2 -plibzookeeper-st-dev
 endif
 
-# Install init script for Debian and upstart for Ubuntu
 override_dh_installinit:
-	if dpkg-vendor --derives-from ubuntu ; then \
-		cp debian/zookeeperd.upstart.in debian/zookeeperd.upstart ; \
-	fi
 	dh_installinit -d
