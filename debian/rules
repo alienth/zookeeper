@@ -66,8 +66,11 @@ override_dh_auto_test-arch:
 		ln -sf /usr/share/java/$$jar.jar build/lib/$$jar.jar; \
 	done;
 	# Execute multi-threaded test suite
-	$(MAKE) -C src/c zktest-mt
-	cd src/c && ./zktest-mt
+	# Disable on Ubuntu due to glibc 2.17 incompatibility
+	if ! dpkg-vendor --derives-from ubuntu; then \
+		$(MAKE) -C src/c zktest-mt; \
+		cd src/c && ./zktest-mt; \
+	fi;
 endif
 # Only run core Java unit tests on i386 architecture as this is the arch
 # that they are built and published on - works around -indep not working
