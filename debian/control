@@ -24,6 +24,7 @@ Build-Depends:
  libjline-java,
  liblog4cxx10-dev,
  liblog4j1.2-java (>> 1.2.15-8),
+ libmockito-java,
  libnetty-java,
  libslf4j-java,
  libtool,

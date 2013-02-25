@@ -4,7 +4,7 @@ zookeeper (3.4.5+dfsg-1~exp1) experimental; urgency=low
     - d/p/ZOOKEEPER-{1374,1033}: Dropped, included upstream.
     - Refreshed remaining patches.
     - Drop bookkeeper support, now a separate project.
-    - d/control: Added new BD's on netty and slf4j.
+    - d/control: Added new BD's on netty, slf4j and mockito.
     - d/zookeeper.{install,cron.daily}: Drop scheduled transaction
       log purging as now handled internally.
   * d/control: Bumped Standards-Version, no changes.

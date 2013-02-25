@@ -15,7 +15,7 @@ Forwarded: not-needed
      <property name="revision.dir" value="${basedir}/.revision" />
      <property name="revision.properties" value="revision.properties" />
      <property file="${basedir}/src/java/${revision.properties}" />
-@@ -184,27 +184,20 @@
+@@ -184,27 +184,21 @@
      <path id="java.classpath">
        <pathelement location="${build.classes}"/>
        <!-- allow the user to override (e.g. if there are local versions) -->
@@ -49,10 +49,11 @@ Forwarded: not-needed
 -        <include name="**/*.jar" />
 +      <fileset dir="/usr/share/java">
 +        <include name="junit4.jar" />
++        <include name="mockito-core.jar" />
        </fileset>
        <path refid="java.classpath"/>
      </path>
-@@ -246,7 +239,7 @@
+@@ -246,7 +240,7 @@
                    targetfile="${src_generated.dir}/.generated"/>
      </target>
  
@@ -61,7 +62,7 @@ Forwarded: not-needed
          <mkdir dir="${src_generated.dir}" />
          <mkdir dir="${csrc_generated.dir}" />
          <java classname="org.apache.jute.compiler.generated.Rcc" fork="true" dir="${src_generated.dir}">
-@@ -354,7 +347,7 @@
+@@ -354,7 +348,7 @@
        <ivy:cachepath pathid="releaseaudit-classpath" conf="releaseaudit"/>
      </target>
  
@@ -70,7 +71,7 @@ Forwarded: not-needed
          <javac srcdir="${java.src.dir}" destdir="${build.classes}" includeantruntime="false"
                 target="${javac.target}" source="${javac.source}" debug="on">
              <classpath refid="java.classpath"/>
-@@ -363,7 +356,7 @@
+@@ -363,7 +357,7 @@
          </javac>
      </target>
  
@@ -79,7 +80,7 @@ Forwarded: not-needed
        <mkdir dir="${test.java.classes}"/>
        <javac srcdir="${test.src.dir}" destdir="${test.java.classes}" includeantruntime="false"
               target="${javac.target}" source="${javac.source}" debug="on">
-@@ -1124,21 +1117,10 @@
+@@ -1124,21 +1118,10 @@
      <target name="test-init" depends="jar,compile-test">
          <delete dir="${test.log.dir}" />
          <delete dir="${test.tmp.dir}" />
@@ -101,7 +102,7 @@ Forwarded: not-needed
      </target>
  
      <condition property="quicktest">
-@@ -1191,6 +1173,9 @@
+@@ -1191,6 +1174,9 @@
            <batchtest todir="${test.log.dir}" if="fulltest">
              <fileset dir="${test.src.dir}">
                <include name="**/*${test.category}Test.java"/>
