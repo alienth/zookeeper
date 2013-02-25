@@ -4,20 +4,18 @@ Description: Patches to upstream build system to disable use of ivy,
 Author: James Page <james.page@ubuntu.com>, Thomas Koch <thomas@koch.ro>
 Forwarded: not-needed
 
-Index: zookeeper/build.xml
-===================================================================
---- zookeeper.orig/build.xml	2012-08-08 09:39:55.000000000 +0100
-+++ zookeeper/build.xml	2012-08-08 09:40:57.822032084 +0100
+--- a/build.xml
++++ b/build.xml
 @@ -25,7 +25,7 @@
      <property environment="env"/>
      
-     <property name="version" value="3.3.6" />
+     <property name="version" value="3.4.5" />
 -    <property name="final.name" value="${name}-${version}"/>
 +    <property name="final.name" value="${name}"/>
      <property name="revision.dir" value="${basedir}/.revision" />
      <property name="revision.properties" value="revision.properties" />
      <property file="${basedir}/src/java/${revision.properties}" />
-@@ -169,27 +169,17 @@
+@@ -184,27 +184,20 @@
      <path id="java.classpath">
        <pathelement location="${build.classes}"/>
        <!-- allow the user to override (e.g. if there are local versions) -->
@@ -28,6 +26,9 @@ Index: zookeeper/build.xml
 +        <include name="log4j-1.2.jar" />
 +        <include name="jline.jar" />
 +        <include name="xercesImpl.jar" />
++        <include name="slf4j-api.jar" />
++        <include name="slf4j-log4j12.jar" />
++        <include name="netty.jar" />
        </fileset>
 -      <fileset dir="${lib.dir}">
 -        <include name="${lib.dir.includes}" />
@@ -51,7 +52,7 @@ Index: zookeeper/build.xml
        </fileset>
        <path refid="java.classpath"/>
      </path>
-@@ -223,7 +213,7 @@
+@@ -246,7 +239,7 @@
                    targetfile="${src_generated.dir}/.generated"/>
      </target>
  
@@ -60,25 +61,25 @@ Index: zookeeper/build.xml
          <mkdir dir="${src_generated.dir}" />
          <mkdir dir="${csrc_generated.dir}" />
          <java classname="org.apache.jute.compiler.generated.Rcc" fork="true" dir="${src_generated.dir}">
-@@ -325,7 +315,7 @@
+@@ -354,7 +347,7 @@
        <ivy:cachepath pathid="releaseaudit-classpath" conf="releaseaudit"/>
      </target>
  
 -    <target name="compile" depends="ivy-retrieve,clover,build-generated">
 +    <target name="compile" depends="build-generated">
-         <javac srcdir="${java.src.dir}" destdir="${build.classes}" 
-                target="${javac.target}" debug="on">
+         <javac srcdir="${java.src.dir}" destdir="${build.classes}" includeantruntime="false"
+                target="${javac.target}" source="${javac.source}" debug="on">
              <classpath refid="java.classpath"/>
-@@ -334,7 +324,7 @@
+@@ -363,7 +356,7 @@
          </javac>
      </target>
  
 -    <target name="compile-test" depends="ivy-retrieve-test,compile">
 +    <target name="compile-test" depends="compile">
        <mkdir dir="${test.java.classes}"/>
-       <javac srcdir="${test.src.dir}" destdir="${test.java.classes}"
-              target="${javac.target}" debug="on">
-@@ -769,21 +759,10 @@
+       <javac srcdir="${test.src.dir}" destdir="${test.java.classes}" includeantruntime="false"
+              target="${javac.target}" source="${javac.source}" debug="on">
+@@ -1124,21 +1117,10 @@
      <target name="test-init" depends="jar,compile-test">
          <delete dir="${test.log.dir}" />
          <delete dir="${test.tmp.dir}" />
@@ -100,7 +101,7 @@ Index: zookeeper/build.xml
      </target>
  
      <condition property="quicktest">
-@@ -836,6 +815,9 @@
+@@ -1191,6 +1173,9 @@
            <batchtest todir="${test.log.dir}" if="fulltest">
              <fileset dir="${test.src.dir}">
                <include name="**/*${test.category}Test.java"/>
@@ -110,24 +111,9 @@ Index: zookeeper/build.xml
              </fileset>
            </batchtest>
            <batchtest todir="${test.log.dir}" if="testcase">
-Index: zookeeper/src/contrib/bookkeeper/build.xml
-===================================================================
---- zookeeper.orig/src/contrib/bookkeeper/build.xml	2012-08-08 09:39:55.000000000 +0100
-+++ zookeeper/src/contrib/bookkeeper/build.xml	2012-08-08 09:40:47.673998090 +0100
-@@ -34,7 +34,7 @@
- 
-   <target name="setjarname">
-     <property name="jarname"
--              value="${build.dir}/zookeeper-${version}-${name}.jar"/>
-+              value="${build.dir}/zookeeper-${name}.jar"/>
-   </target>
- 
-   <target name="init" depends="checkMainCompiled, zookeeperbuildcontrib.init"/>
-Index: zookeeper/src/contrib/build-contrib.xml
-===================================================================
---- zookeeper.orig/src/contrib/build-contrib.xml	2012-08-08 09:39:55.000000000 +0100
-+++ zookeeper/src/contrib/build-contrib.xml	2012-08-08 09:40:47.673998090 +0100
-@@ -70,25 +70,14 @@
+--- a/src/contrib/build-contrib.xml
++++ b/src/contrib/build-contrib.xml
+@@ -70,25 +70,16 @@
  
    <path id="classpath">
      <pathelement location="${build.classes}"/>
@@ -140,6 +126,8 @@ Index: zookeeper/src/contrib/build-contrib.xml
 +      <include name="jline.jar" />
 +      <include name="xercesImpl.jar" />
 +      <include name="netty.jar" />
++      <include name="slf4j-api.jar" />
++      <include name="slf4j-log4j12.jar" />
      </fileset>
 -    <fileset refid="lib.jars"/>
 +    <!-- allow the user to override (e.g. if there are local versions) -->
@@ -159,7 +147,7 @@ Index: zookeeper/src/contrib/build-contrib.xml
    </path>
  
    <!-- ====================================================== -->
-@@ -133,7 +122,7 @@
+@@ -133,7 +124,7 @@
    <target name="jar" depends="compile" unless="skip.contrib">
      <echo message="contrib: ${name}"/>
      <jar
@@ -168,7 +156,7 @@ Index: zookeeper/src/contrib/build-contrib.xml
        basedir="${build.classes}"      
      />
    </target>
-@@ -211,15 +200,9 @@
+@@ -233,15 +224,9 @@
    </target>
  
    <target name="ivy-retrieve" depends="init,ivy-init">
@@ -184,10 +172,8 @@ Index: zookeeper/src/contrib/build-contrib.xml
    </target>
  
  
-Index: zookeeper/src/contrib/zooinspector/build.xml
-===================================================================
---- zookeeper.orig/src/contrib/zooinspector/build.xml	2012-08-08 09:39:55.000000000 +0100
-+++ zookeeper/src/contrib/zooinspector/build.xml	2012-08-08 09:40:47.673998090 +0100
+--- a/src/contrib/zooinspector/build.xml
++++ b/src/contrib/zooinspector/build.xml
 @@ -20,7 +20,7 @@
  
  
@@ -201,8 +187,8 @@ Index: zookeeper/src/contrib/zooinspector/build.xml
  			<fileset file="${basedir}/lib/log4j.properties" />
  		</copy>
  		<copy todir="${build.dir}/lib">
--			<fileset file="../../../build/zookeeper-3.3.1.jar" />
-+			<fileset file="../../../build/zookeeper-3.3.3.jar" />
+-			<fileset file="../../../build/zookeeper-3.3.0.jar" />
++			<fileset file="../../../build/zookeeper.jar" />
  		</copy>
  		<copy todir="${build.dir}">
  			<fileset dir="${basedir}" includes="*.*" excludes="build.xml,ivy.xml" />
@@ -210,7 +196,7 @@ Index: zookeeper/src/contrib/zooinspector/build.xml
  		<jar jarfile="${jarname}">
  			<manifest>
  				<attribute name="Main-Class" value="org.apache.zookeeper.inspector.ZooInspector" />
--				<attribute name="Class-Path" value="lib/log4j-1.2.15.jar lib/TableLayout-20050920.jar lib/zookeeper-3.3.1.jar lib/jToaster-1.0.4.jar lib" />
+-				<attribute name="Class-Path" value="lib/log4j-1.2.15.jar lib/TableLayout-20050920.jar lib/zookeeper-3.3.0.jar lib/jToaster-1.0.4.jar lib" />
  				<attribute name="Built-By" value="${user.name}" />
  				<attribute name="Built-At" value="${build.time}" />
  				<attribute name="Built-On" value="${host.name}" />

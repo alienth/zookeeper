@@ -1,6 +1,18 @@
-zookeeper (3.4.5+dfsg-1) UNRELEASED; urgency=low
+zookeeper (3.4.5+dfsg-1~exp1) UNRELEASED; urgency=low
 
-  * New upstream release
+  * New upstream release (Closes: #699120, LP: #1107400, #954160):
+    - d/p/ZOOKEEPER-{1374,1033}: Dropped, included upstream.
+    - Refreshed remaining patches.
+    - Drop bookkeeper support, now a separate project.
+    - d/control: Added new BD's on netty and slf4j.
+    - d/zookeeper.{install,cron.daily}: Drop scheduled transaction
+      log purging as now handled internally.
+  * d/control: Bumped Standards-Version, no changes.
+  * d/control: Dropped obsolete DM-Upload-Allowed.
+  * Sync Ubuntu changes:
+    - d/rules: Only execute native test suite on i386 and amd64
+      architectures; its a bit racey and does not execute reliably
+      on others.
 
  -- James Page <james.page@ubuntu.com>  Thu, 07 Feb 2013 10:48:31 +0000
 

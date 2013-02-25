@@ -3,10 +3,10 @@ Section: java
 Priority: optional
 Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
 Uploaders: James Page <james.page@ubuntu.com>
-Homepage: http://hadoop.apache.org/zookeeper
+Homepage: http://zookeeper.apache.org
 Vcs-Browser: http://git.debian.org/?p=pkg-java/zookeeper.git
 Vcs-Git: git://git.debian.org/pkg-java/zookeeper.git
-Standards-Version: 3.9.3
+Standards-Version: 3.9.4
 Build-Depends:
  ant (>= 1.6.0),
  ant-optional,
@@ -25,13 +25,13 @@ Build-Depends:
  liblog4cxx10-dev,
  liblog4j1.2-java (>> 1.2.15-8),
  libnetty-java,
+ libslf4j-java,
  libtool,
  libxerces2-java,
  libxml2-dev,
  procps,
  python-all-dev (>= 2.6.6-3~)
 X-Python-Version: >= 2.6
-DM-Upload-Allowed: yes
 
 Package: libzookeeper-java
 Architecture: all
@@ -39,6 +39,7 @@ Depends:
  libjline-java,
  liblog4j1.2-java (>> 1.2.15-8),
  libnetty-java,
+ libslf4j-java,
  libxerces2-java,
  ${misc:Depends}
 Description: Core Java libraries for zookeeper
@@ -68,7 +69,7 @@ Description: High-performance coordination service for distributed applications
 
 Package: zookeeperd
 Architecture: all
-Depends: zookeeper (= ${binary:Version}), ${misc:Depends}, lsb-base (>= 3.2-14)
+Depends: lsb-base (>= 3.2-14), zookeeper (= ${binary:Version}), ${misc:Depends}
 Description: Init control scripts for zookeeper
  ZooKeeper is a centralized, reliable, service for maintaining configuration
  information, naming, providing distributed synchronization, and group
@@ -168,7 +169,10 @@ Description: Development files for single threaded zookeeper C bindings
 Package: zookeeper-bin
 Architecture: any
 Section: misc
-Depends: libzookeeper-mt2 (= ${binary:Version}), ${misc:Depends}, ${shlibs:Depends}
+Depends:
+ libzookeeper-mt2 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends}
 Description: Command line utilities for zookeeper
  ZooKeeper is a centralized, reliable, service for maintaining configuration
  information, naming, providing distributed synchronization, and group

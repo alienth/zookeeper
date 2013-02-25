@@ -22,11 +22,6 @@ override_dh_auto_build:
 	cd src/c && ./configure --prefix=/usr --libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH)
 	$(MAKE) -C src/c
 
-	# Compile contribs - bookkeeper
-	cd src/contrib && \
-		ant -Dversion=$(DEB_UPSTREAM_VERSION) \
-			-propertyfile ../../debian/ant.properties \
-			-Dcontribfilesetincludes="bookkeeper/build.xml"
 	# Compile contribs - zooinspector
 	cd src/contrib && \
 		ant -Dversion=$(DEB_UPSTREAM_VERSION) \
@@ -59,16 +54,21 @@ override_dh_install:
 	dh_install
 
 ifeq (,$(findstring nocheck, $(DEB_BUILD_OPTIONS)))
+# Limit architectures which execute tests as some
+# non x86 archs can be a bit racey.
+TEST_ARCH=i386 amd64
+ifneq (,$(findstring $(DEB_BUILD_ARCH), $(TEST_ARCH)))
+TEST_JARS=jline log4j-1.2 xercesImpl xmlParserAPIs netty slf4j-api slf4j-log4j12
 override_dh_auto_test-arch:
 	# C testing starts/stops zookeeper
 	# this ensures that all the right classes are found
-	for jar in jline log4j-1.2 xercesImpl xmlParserAPIs; do \
+	for jar in $(TEST_JARS); do \
 		ln -sf /usr/share/java/$$jar.jar build/lib/$$jar.jar; \
 	done;
 	# Execute multi-threaded test suite
 	$(MAKE) -C src/c zktest-mt
 	cd src/c && ./zktest-mt
-
+endif
 # Only run core Java unit tests on i386 architecture as this is the arch
 # that they are built and published on - works around -indep not working
 # in Ubuntu.
