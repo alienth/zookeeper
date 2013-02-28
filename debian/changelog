@@ -1,6 +1,8 @@
 zookeeper (3.4.5+dfsg-1~exp2) experimental; urgency=low
 
-  * Add missing jars to zookeeper CLASSPATH for 3.4.5 release.
+  * d/conf_example/environment: Add missing jars to zookeeper CLASSPATH
+    for 3.4.5 release.
+  * d/control: Update VCS fields to be canonical.
 
  -- James Page <james.page@ubuntu.com>  Thu, 28 Feb 2013 09:26:11 +0000
 
