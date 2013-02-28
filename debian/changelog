@@ -1,3 +1,9 @@
+zookeeper (3.4.5+dfsg-1~exp2) UNRELEASED; urgency=low
+
+  * Add missing jars to zookeeper CLASSPATH for 3.4.5 release.
+
+ -- James Page <james.page@ubuntu.com>  Thu, 28 Feb 2013 08:44:07 +0000
+
 zookeeper (3.4.5+dfsg-1~exp1) experimental; urgency=low
 
   * New upstream release (Closes: #699120, LP: #1107400, #954160):
