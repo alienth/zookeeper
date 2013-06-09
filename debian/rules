@@ -66,8 +66,9 @@ override_dh_auto_test-arch:
 		ln -sf /usr/share/java/$$jar.jar build/lib/$$jar.jar; \
 	done;
 	# Execute multi-threaded test suite
-	# Disable on Ubuntu due to glibc 2.17 incompatibility
-	if ! dpkg-vendor --derives-from ubuntu; then \
+	# Disable on Ubuntu and Debian due to glibc 2.17 incompatibility
+	# https://issues.apache.org/jira/browse/ZOOKEEPER-1646
+	if ! dpkg-vendor --derives-from debian; then \
 		$(MAKE) -C src/c zktest-mt; \
 		cd src/c && ./zktest-mt; \
 	fi;
@@ -125,17 +126,6 @@ override_dh_auto_clean:
 	rm -rf src/c/configure
 	rm -rf src/c/ltmain.sh
 	rm -rf src/c/TEST-*
-
-ifeq (,$(findstring nodocs, $(DEB_BUILD_OPTIONS)))
-override_dh_installdocs:
-	dh_installdocs --link-doc=libzookeeper-java \
-	  -plibzookeeper-java -pzookeeper -pzookeeperd -plibzookeeper-java-doc
-	dh_installdocs --link-doc=libzookeeper-mt2 \
-	  -plibzookeeper-mt2 -plibzookeeper-mt-dev -pzookeeper-bin \
-      -ppython-zookeeper -plibzookeeper2
-	dh_installdocs --link-doc=libzookeeper-st2 \
-	  -plibzookeeper-st2 -plibzookeeper-st-dev
-endif
 
 override_dh_installinit:
 	dh_installinit -d

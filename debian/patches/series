@@ -3,3 +3,4 @@ debian/patch-build-system
 debian/disable-cygwin-detection
 fixes/ZOOKEEPER-705
 ftbfs-gcc-4.7.diff
+fixes/ZOOKEEPER-770

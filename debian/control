@@ -43,6 +43,7 @@ Depends:
  libslf4j-java,
  libxerces2-java,
  ${misc:Depends}
+Recommends: libzookeeper-java-doc
 Description: Core Java libraries for zookeeper
  ZooKeeper is a centralized, reliable, service for maintaining configuration
  information, naming, providing distributed synchronization, and group
@@ -83,7 +84,7 @@ Description: Init control scripts for zookeeper
 Package: libzookeeper-java-doc
 Section: doc
 Architecture: all
-Depends: libzookeeper-java (= ${binary:Version}), ${misc:Depends}
+Depends: ${misc:Depends}
 Description: API Documentation for zookeeper
  ZooKeeper is a centralized, reliable, service for maintaining configuration
  information, naming, providing distributed synchronization, and group
