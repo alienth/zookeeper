@@ -1,7 +1,12 @@
 zookeeper (3.4.5+dfsg-2) UNRELEASED; urgency=medium
 
+  [ tony mancill ]
   * Team upload.
   * Add slf4j jars to CLASSPATH in zooinspector. (Closes: #712778)
+
+  [ Tim Retout ]
+  * debian/watch: Add pgp signature mangling, and use main mirror.
+  * debian/upstream/signing-key.asc: Add upstream signing keys.
 
  -- tony mancill <tmancill@debian.org>  Tue, 10 Dec 2013 22:33:50 -0800
 
