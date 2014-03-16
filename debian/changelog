@@ -1,4 +1,4 @@
-zookeeper (3.4.5+dfsg-2) UNRELEASED; urgency=high
+zookeeper (3.4.5+dfsg-2) unstable; urgency=high
 
   [ tony mancill ]
   * Team upload.
@@ -11,7 +11,7 @@ zookeeper (3.4.5+dfsg-2) UNRELEASED; urgency=high
     directories. (Closes: #720148)
   * Urgency set to high for RC bugfix.
 
- -- tony mancill <tmancill@debian.org>  Tue, 10 Dec 2013 22:33:50 -0800
+ -- Tim Retout <diocles@debian.org>  Sun, 16 Mar 2014 20:07:23 +0000
 
 zookeeper (3.4.5+dfsg-1) unstable; urgency=low
 
