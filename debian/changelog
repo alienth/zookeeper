@@ -1,4 +1,4 @@
-zookeeper (3.4.5+dfsg-2) UNRELEASED; urgency=medium
+zookeeper (3.4.5+dfsg-2) UNRELEASED; urgency=high
 
   [ tony mancill ]
   * Team upload.
@@ -7,6 +7,9 @@ zookeeper (3.4.5+dfsg-2) UNRELEASED; urgency=medium
   [ Tim Retout ]
   * debian/watch: Add pgp signature mangling, and use main mirror.
   * debian/upstream/signing-key.asc: Add upstream signing keys.
+  * debian/*.preinst: Transition /usr/share/doc symlinks to real
+    directories. (Closes: #720148)
+  * Urgency set to high for RC bugfix.
 
  -- tony mancill <tmancill@debian.org>  Tue, 10 Dec 2013 22:33:50 -0800
 
