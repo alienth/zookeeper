@@ -13,7 +13,7 @@ Build-Depends:
  autoconf,
  automake,
  debhelper (>= 9~),
- default-jdk (>= 1:1.6),
+ default-jdk (>= 2:1.6),
  default-jdk-doc,
  help2man,
  javacc,
